@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  LaunchAgent plist for silent-screenshot-daemon.
+  Installed to ~/Library/LaunchAgents/ by install-macos.sh.
+  PYTHON3_BIN and INSTALL_DIR are substituted by install-macos.sh.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.silent-screenshot-daemon</string>
+
+  <key>KeepAlive</key>
+  <true/>
+
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>PYTHON3_BIN</string>
+    <string>INSTALL_DIR/daemon.py</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>INSTALL_DIR</string>
+
+  <key>StandardOutPath</key>
+  <string>INSTALL_DIR/logs/launchd-stdout.log</string>
+
+  <key>StandardErrorPath</key>
+  <string>INSTALL_DIR/logs/launchd-stderr.log</string>
+
+  <key>ThrottleInterval</key>
+  <integer>10</integer>
+</dict>
+</plist>

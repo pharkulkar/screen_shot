@@ -1,0 +1,8 @@
+{
+  "outputDir":     "./screenshots",
+  "hotkeyChar":    "C",
+  "pressCount":    4,
+  "maxIntervalMs": 2000,
+  "logFile":       "./logs/daemon.log",
+  "logLevel":      "debug"
+}

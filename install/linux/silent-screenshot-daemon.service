@@ -1,0 +1,31 @@
+# =============================================================================
+# silent-screenshot-daemon.service
+# systemd --user service unit for silent-screenshot-daemon.
+# Installed to ~/.config/systemd/user/ by install-linux.sh.
+# =============================================================================
+[Unit]
+Description=Silent Screenshot Daemon — global hotkey screenshot utility
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+
+# install-linux.sh substitutes INSTALL_DIR with the real absolute path.
+WorkingDirectory=INSTALL_DIR
+ExecStart=NODE_BIN INSTALL_DIR/index.js
+
+# Restart the service automatically if it crashes, but wait 10 s between
+# attempts to avoid a tight crash loop.
+Restart=on-failure
+RestartSec=10
+
+# Capture any output that leaks before the logger initialises.
+StandardOutput=append:INSTALL_DIR/logs/systemd-stdout.log
+StandardError=append:INSTALL_DIR/logs/systemd-stderr.log
+
+# Prevent the service from accumulating an enormous journal entry.
+SyslogIdentifier=silent-screenshot-daemon
+
+[Install]
+WantedBy=graphical-session.target

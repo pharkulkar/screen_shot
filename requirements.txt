@@ -1,0 +1,17 @@
+# silent-screenshot-daemon + viewer dependencies
+# Install with: pip3 install -r requirements.txt
+
+# Global keyboard listener (all platforms)
+pynput==1.8.2
+
+# Web gallery server
+flask==3.0.3
+
+# Screenshot capture — works on macOS, Windows, Linux without subprocess/permissions
+# macOS: captures live compositor frame directly (no Screen Recording permission needed)
+# Windows: supplements Pillow ImageGrab for multi-monitor support
+# Linux: works on X11; Wayland requires XCB
+mss==9.0.2
+
+# Pillow: thumbnail generation for web gallery + Windows fallback capture
+Pillow==10.3.0
