@@ -226,6 +226,265 @@ GALLERY_TEMPLATE = """
 </html>
 """
 
+TYPINGS_TEMPLATE = """
+
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>Live Typing</title>
+
+  <style>
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #0f0f0f;
+      color: #e0e0e0;
+      min-height: 100vh;
+    }
+
+    .app {
+      width: 100%;
+      min-height: 100vh;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    header {
+      padding-bottom: 16px;
+      border-bottom: 1px solid #2a2a2a;
+    }
+
+    header h1 {
+      font-size: 1.4rem;
+      font-weight: 600;
+      color: #ffffff;
+      margin-bottom: 5px;
+    }
+
+    header p {
+      font-size: 0.85rem;
+      color: #777;
+    }
+
+    .content {
+      flex: 1;
+      display: grid;
+      grid-template-rows: minmax(180px, 1fr) minmax(180px, 1fr);
+      gap: 20px;
+    }
+
+    .panel {
+      background: #171717;
+      border: 1px solid #2a2a2a;
+      border-radius: 12px;
+      overflow: hidden;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .panel-header {
+      padding: 12px 16px;
+      border-bottom: 1px solid #2a2a2a;
+      font-size: 0.78rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #777;
+    }
+
+    textarea {
+      width: 100%;
+      flex: 1;
+      resize: none;
+      border: none;
+      outline: none;
+      background: transparent;
+      color: #f0f0f0;
+      padding: 18px;
+      font-family: inherit;
+      font-size: 1rem;
+      line-height: 1.6;
+    }
+
+    textarea::placeholder {
+      color: #555;
+    }
+
+    .preview {
+      flex: 1;
+      padding: 18px;
+      overflow-y: auto;
+      font-size: 1rem;
+      line-height: 1.6;
+      color: #f0f0f0;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .placeholder {
+      color: #555;
+    }
+
+    .footer {
+      text-align: right;
+      font-size: 0.75rem;
+      color: #555;
+    }
+
+    /*
+      Tablet and desktop:
+      Input and preview appear side by side.
+    */
+    @media (min-width: 768px) {
+
+      .app {
+        padding: 32px;
+      }
+
+      .content {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        grid-template-rows: 1fr;
+      }
+
+      .panel {
+        min-height: 500px;
+      }
+
+    }
+
+    /*
+      Smaller mobile devices
+    */
+    @media (max-width: 480px) {
+
+      .app {
+        padding: 14px;
+        gap: 14px;
+      }
+
+      header h1 {
+        font-size: 1.2rem;
+      }
+
+      .content {
+        gap: 14px;
+      }
+
+      textarea,
+      .preview {
+        padding: 14px;
+        font-size: 0.95rem;
+      }
+
+    }
+
+  </style>
+
+</head>
+
+<body>
+
+  <main class="app">
+
+```
+<header>
+  <h1>Live Typing</h1>
+  <p>Whatever you type below will appear here instantly.</p>
+</header>
+
+
+<section class="content">
+
+  <!-- Input Panel -->
+  <div class="panel">
+
+    <div class="panel-header">
+      Type Here
+    </div>
+
+    <textarea
+      id="typing-input"
+      placeholder="Start typing here..."
+      autofocus
+    ></textarea>
+
+  </div>
+
+
+  <!-- Preview Panel -->
+  <div class="panel">
+
+    <div class="panel-header">
+      Live Preview
+    </div>
+
+    <div
+      id="typing-preview"
+      class="preview placeholder"
+    >
+      Your typed text will appear here...
+    </div>
+
+  </div>
+
+</section>
+
+
+<div class="footer">
+  <span id="character-count">0</span> characters
+</div>
+```
+
+  </main>
+
+  <script>
+
+    const input = document.getElementById('typing-input');
+    const preview = document.getElementById('typing-preview');
+    const characterCount = document.getElementById('character-count');
+
+    input.addEventListener('input', function () {
+
+      const value = input.value;
+
+      characterCount.textContent = value.length;
+
+      if (value.length > 0) {
+
+        preview.textContent = value;
+        preview.classList.remove('placeholder');
+
+      } else {
+
+        preview.textContent = 'Your typed text will appear here...';
+        preview.classList.add('placeholder');
+
+      }
+
+    });
+
+  </script>
+
+</body>
+
+</html>
+"""
+
+
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -267,6 +526,15 @@ def index():
     days = get_days()
     return render_template_string(
         GALLERY_TEMPLATE,
+        days=days,
+        total=total_count(days),
+    )
+
+@app.route("/typings")
+def index():
+    days = get_days()
+    return render_template_string(
+        TYPINGS_TEMPLATE,
         days=days,
         total=total_count(days),
     )
