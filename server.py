@@ -20,11 +20,13 @@ import argparse
 import json
 import logging
 import os
+import queue
 import sys
+import threading
 from datetime import datetime
 from pathlib import Path
 
-from flask import Flask, abort, render_template_string, send_file
+from flask import Flask, abort, render_template_string, request, Response, send_file
 
 # ── Resolve project root ──────────────────────────────────────────────────────
 ROOT = Path(__file__).resolve().parent
@@ -50,6 +52,24 @@ app = Flask(__name__)
 # Silence Flask's default request logger — keep the terminal/log clean.
 log = logging.getLogger("werkzeug")
 log.setLevel(logging.ERROR)
+
+
+# ── Live-typing shared state (SSE broadcast) ──────────────────────────────────
+
+_typing_lock     = threading.Lock()
+_typing_text     = ""          # latest text from any connected typer
+_typing_listeners: list[queue.Queue] = []  # one queue per SSE subscriber
+
+
+def _broadcast(text: str) -> None:
+    """Push the current text to every waiting SSE subscriber."""
+    with _typing_lock:
+        listeners = list(_typing_listeners)
+    for q in listeners:
+        try:
+            q.put_nowait(text)
+        except queue.Full:
+            pass  # slow client — skip this frame
 
 
 # ── HTML template ─────────────────────────────────────────────────────────────
@@ -226,25 +246,14 @@ GALLERY_TEMPLATE = """
 </html>
 """
 
-TYPINGS_TEMPLATE = """
-
-<!DOCTYPE html>
-
+TYPINGS_TEMPLATE = """<!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
   <title>Live Typing</title>
-
   <style>
-
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -274,10 +283,7 @@ TYPINGS_TEMPLATE = """
       margin-bottom: 5px;
     }
 
-    header p {
-      font-size: 0.85rem;
-      color: #777;
-    }
+    header p { font-size: 0.85rem; color: #777; }
 
     .workspace {
       flex: 1;
@@ -322,6 +328,17 @@ TYPINGS_TEMPLATE = """
       color: #777;
     }
 
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #444;
+      transition: background 0.3s;
+      flex-shrink: 0;
+    }
+    .status-dot.connected { background: #4caf50; }
+    .status-dot.error     { background: #f44336; }
+
     .collapse-button {
       border: 1px solid #333;
       background: #222;
@@ -334,17 +351,9 @@ TYPINGS_TEMPLATE = """
       line-height: 1;
       transition: background 0.15s, color 0.15s;
     }
+    .collapse-button:hover { background: #2a2a2a; color: #fff; }
 
-    .collapse-button:hover {
-      background: #2a2a2a;
-      color: #fff;
-    }
-
-    .input-wrapper {
-      flex: 1;
-      min-height: 0;
-      display: flex;
-    }
+    .input-wrapper { flex: 1; min-height: 0; display: flex; }
 
     textarea {
       width: 100%;
@@ -359,10 +368,7 @@ TYPINGS_TEMPLATE = """
       font-size: 1rem;
       line-height: 1.6;
     }
-
-    textarea::placeholder {
-      color: #555;
-    }
+    textarea::placeholder { color: #555; }
 
     .resize-handle {
       height: 10px;
@@ -371,7 +377,6 @@ TYPINGS_TEMPLATE = """
       flex-shrink: 0;
       position: relative;
     }
-
     .resize-handle::after {
       content: "";
       width: 40px;
@@ -384,10 +389,7 @@ TYPINGS_TEMPLATE = """
       transform: translateX(-50%);
     }
 
-    .preview-panel {
-      flex: 1;
-      min-height: 250px;
-    }
+    .preview-panel { flex: 1; min-height: 250px; }
 
     .preview {
       flex: 1;
@@ -400,24 +402,15 @@ TYPINGS_TEMPLATE = """
       white-space: pre-wrap;
       word-break: break-word;
     }
-
-    .placeholder {
-      color: #555;
-    }
+    .placeholder { color: #555; }
 
     .input-panel.collapsed {
       height: 48px !important;
       min-height: 48px;
     }
-
     .input-panel.collapsed .input-wrapper,
-    .input-panel.collapsed .resize-handle {
-      display: none;
-    }
-
-    .input-panel.collapsed .collapse-button {
-      transform: rotate(180deg);
-    }
+    .input-panel.collapsed .resize-handle { display: none; }
+    .input-panel.collapsed .collapse-button { transform: rotate(180deg); }
 
     .footer {
       text-align: right;
@@ -427,363 +420,180 @@ TYPINGS_TEMPLATE = """
     }
 
     @media (max-width: 768px) {
-
-      .app {
-        padding: 16px;
-        gap: 14px;
-      }
-
-      .workspace {
-        gap: 14px;
-      }
-
-      .input-panel {
-        height: 260px;
-        min-height: 140px;
-      }
-
-      .preview-panel {
-        min-height: 220px;
-      }
-
-      textarea,
-      .preview {
-        font-size: 0.95rem;
-      }
-
-      textarea {
-        padding: 14px;
-      }
-
-      .preview {
-        padding: 16px;
-      }
-
+      .app { padding: 16px; gap: 14px; }
+      .workspace { gap: 14px; }
+      .input-panel { height: 260px; min-height: 140px; }
+      .preview-panel { min-height: 220px; }
+      textarea, .preview { font-size: 0.95rem; }
+      textarea { padding: 14px; }
+      .preview { padding: 16px; }
     }
 
     @media (max-width: 480px) {
-
-      .app {
-        padding: 12px;
-      }
-
-      header h1 {
-        font-size: 1.2rem;
-      }
-
-      header p {
-        font-size: 0.78rem;
-      }
-
-      .input-panel {
-        height: 220px;
-      }
-
-      .panel-header {
-        min-height: 44px;
-        padding: 10px 12px;
-      }
-
-      .collapse-button {
-        width: 28px;
-        height: 28px;
-      }
-
+      .app { padding: 12px; }
+      header h1 { font-size: 1.2rem; }
+      header p { font-size: 0.78rem; }
+      .input-panel { height: 220px; }
+      .panel-header { min-height: 44px; padding: 10px 12px; }
+      .collapse-button { width: 28px; height: 28px; }
     }
-
   </style>
-
 </head>
-
 <body>
-
   <main class="app">
 
-```
-<header>
-  <h1>Live Typing</h1>
-  <p>Type in the editor below and see your text appear instantly.</p>
-</header>
+    <header>
+      <h1>Live Typing</h1>
+      <p>Type in the editor below — the preview syncs to every connected device.</p>
+    </header>
 
+    <section class="workspace">
 
-<section class="workspace">
+      <!-- Input Panel -->
+      <div class="panel input-panel" id="input-panel">
+        <div class="panel-header">
+          <span class="panel-title">Type Here</span>
+          <button class="collapse-button" id="collapse-button" type="button"
+            title="Collapse input" aria-label="Collapse input">&#9650;</button>
+        </div>
+        <div class="input-wrapper">
+          <textarea id="typing-input" placeholder="Start typing here..." autofocus></textarea>
+        </div>
+        <div class="resize-handle" id="resize-handle" title="Drag to resize"></div>
+      </div>
 
+      <!-- Preview Panel -->
+      <div class="panel preview-panel">
+        <div class="panel-header">
+          <span class="panel-title">Live Preview</span>
+          <span class="status-dot" id="status-dot" title="SSE connection status"></span>
+        </div>
+        <div id="typing-preview" class="preview placeholder">
+          Your typed text will appear here...
+        </div>
+      </div>
 
-  <!-- Input Panel -->
-  <div class="panel input-panel" id="input-panel">
+    </section>
 
-    <div class="panel-header">
-
-      <span class="panel-title">
-        Type Here
-      </span>
-
-      <button
-        class="collapse-button"
-        id="collapse-button"
-        type="button"
-        title="Collapse input"
-        aria-label="Collapse input"
-      >
-        ▲
-      </button>
-
+    <div class="footer">
+      <span id="character-count">0</span> characters
     </div>
-
-
-    <div class="input-wrapper">
-
-      <textarea
-        id="typing-input"
-        placeholder="Start typing here..."
-        autofocus
-      ></textarea>
-
-    </div>
-
-
-    <div
-      class="resize-handle"
-      id="resize-handle"
-      title="Drag to resize"
-    ></div>
-
-  </div>
-
-
-  <!-- Preview Panel -->
-  <div class="panel preview-panel">
-
-    <div class="panel-header">
-
-      <span class="panel-title">
-        Live Preview
-      </span>
-
-    </div>
-
-
-    <div
-      id="typing-preview"
-      class="preview placeholder"
-    >
-      Your typed text will appear here...
-    </div>
-
-  </div>
-
-
-</section>
-
-
-<div class="footer">
-  <span id="character-count">0</span> characters
-</div>
-```
 
   </main>
 
   <script>
-
-    const input = document.getElementById('typing-input');
-    const preview = document.getElementById('typing-preview');
-    const characterCount = document.getElementById('character-count');
-
-    const inputPanel = document.getElementById('input-panel');
+    const input          = document.getElementById('typing-input');
+    const preview        = document.getElementById('typing-preview');
+    const charCount      = document.getElementById('character-count');
+    const inputPanel     = document.getElementById('input-panel');
     const collapseButton = document.getElementById('collapse-button');
-    const resizeHandle = document.getElementById('resize-handle');
+    const resizeHandle   = document.getElementById('resize-handle');
+    const statusDot      = document.getElementById('status-dot');
 
-
-    /*
-      Live typing preview
-    */
-    input.addEventListener('input', function () {
-
-      const value = input.value;
-
-      characterCount.textContent = value.length;
-
+    // ── SSE: receive updates from server ──────────────────────────────────────
+    function setPreview(value) {
+      charCount.textContent = value.length;
       if (value.length > 0) {
-
         preview.textContent = value;
         preview.classList.remove('placeholder');
-
       } else {
-
-        preview.textContent =
-          'Your typed text will appear here...';
-
+        preview.textContent = 'Your typed text will appear here...';
         preview.classList.add('placeholder');
-
       }
+    }
 
+    function connectSSE() {
+      const es = new EventSource('/typings/stream');
+
+      es.addEventListener('update', function (e) {
+        statusDot.className = 'status-dot connected';
+        // Server sends text JSON-encoded to handle newlines safely
+        try {
+          const value = JSON.parse(e.data);
+          setPreview(value);
+          // Keep local textarea in sync too (another device may have typed)
+          if (document.activeElement !== input) {
+            input.value = value;
+          }
+        } catch (_) {}
+      });
+
+      es.addEventListener('open', function () {
+        statusDot.className = 'status-dot connected';
+      });
+
+      es.addEventListener('error', function () {
+        statusDot.className = 'status-dot error';
+        es.close();
+        setTimeout(connectSSE, 2000);
+      });
+    }
+
+    connectSSE();
+
+    // ── Input: broadcast to server on every keystroke ─────────────────────────
+    input.addEventListener('input', function () {
+      const value = input.value;
+      setPreview(value);
+      fetch('/typings/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: value }),
+        keepalive: true
+      }).catch(function () {});
     });
 
-
-    /*
-      Collapse / Expand input panel
-    */
+    // ── Collapse / Expand ─────────────────────────────────────────────────────
     collapseButton.addEventListener('click', function () {
-
       inputPanel.classList.toggle('collapsed');
-
-      const isCollapsed =
-        inputPanel.classList.contains('collapsed');
-
-      collapseButton.textContent =
-        isCollapsed ? '▼' : '▲';
-
-      collapseButton.title =
-        isCollapsed ? 'Expand input' : 'Collapse input';
-
-      collapseButton.setAttribute(
-        'aria-label',
-        isCollapsed ? 'Expand input' : 'Collapse input'
-      );
-
+      const collapsed = inputPanel.classList.contains('collapsed');
+      collapseButton.innerHTML = collapsed ? '&#9660;' : '&#9650;';
+      collapseButton.title       = collapsed ? 'Expand input'   : 'Collapse input';
+      collapseButton.setAttribute('aria-label', collapsed ? 'Expand input' : 'Collapse input');
     });
 
+    // ── Resize handle ─────────────────────────────────────────────────────────
+    let isResizing = false, startY = 0, startHeight = 0;
 
-    /*
-      Resize input panel by dragging
-    */
-    let isResizing = false;
-    let startY = 0;
-    let startHeight = 0;
-
-
-    resizeHandle.addEventListener('mousedown', function (event) {
-
-      if (inputPanel.classList.contains('collapsed')) {
-        return;
-      }
-
+    resizeHandle.addEventListener('mousedown', function (e) {
+      if (inputPanel.classList.contains('collapsed')) return;
       isResizing = true;
-
-      startY = event.clientY;
-
-      startHeight =
-        inputPanel.getBoundingClientRect().height;
-
+      startY = e.clientY;
+      startHeight = inputPanel.getBoundingClientRect().height;
       document.body.style.cursor = 'ns-resize';
-
       document.body.style.userSelect = 'none';
-
     });
 
-
-    document.addEventListener('mousemove', function (event) {
-
-      if (!isResizing) {
-        return;
-      }
-
-      const difference =
-        event.clientY - startY;
-
-      let newHeight =
-        startHeight + difference;
-
-      const minimumHeight = 120;
-
-      const maximumHeight =
-        window.innerHeight * 0.75;
-
-      newHeight = Math.max(
-        minimumHeight,
-        Math.min(newHeight, maximumHeight)
-      );
-
-      inputPanel.style.height =
-        newHeight + 'px';
-
+    document.addEventListener('mousemove', function (e) {
+      if (!isResizing) return;
+      const h = Math.max(120, Math.min(startHeight + e.clientY - startY, window.innerHeight * 0.75));
+      inputPanel.style.height = h + 'px';
     });
-
 
     document.addEventListener('mouseup', function () {
-
-      if (!isResizing) {
-        return;
-      }
-
+      if (!isResizing) return;
       isResizing = false;
-
       document.body.style.cursor = '';
-
       document.body.style.userSelect = '';
-
     });
 
+    // ── Touch resize ──────────────────────────────────────────────────────────
+    resizeHandle.addEventListener('touchstart', function (e) {
+      if (inputPanel.classList.contains('collapsed')) return;
+      isResizing = true;
+      startY = e.touches[0].clientY;
+      startHeight = inputPanel.getBoundingClientRect().height;
+    }, { passive: true });
 
-    /*
-      Touch support for mobile devices
-    */
-    resizeHandle.addEventListener(
-      'touchstart',
-      function (event) {
+    document.addEventListener('touchmove', function (e) {
+      if (!isResizing) return;
+      const h = Math.max(120, Math.min(startHeight + e.touches[0].clientY - startY, window.innerHeight * 0.75));
+      inputPanel.style.height = h + 'px';
+    }, { passive: true });
 
-        if (inputPanel.classList.contains('collapsed')) {
-          return;
-        }
-
-        isResizing = true;
-
-        startY =
-          event.touches[0].clientY;
-
-        startHeight =
-          inputPanel.getBoundingClientRect().height;
-
-      },
-      { passive: true }
-    );
-
-
-    document.addEventListener(
-      'touchmove',
-      function (event) {
-
-        if (!isResizing) {
-          return;
-        }
-
-        const difference =
-          event.touches[0].clientY - startY;
-
-        let newHeight =
-          startHeight + difference;
-
-        const minimumHeight = 120;
-
-        const maximumHeight =
-          window.innerHeight * 0.75;
-
-        newHeight = Math.max(
-          minimumHeight,
-          Math.min(newHeight, maximumHeight)
-        );
-
-        inputPanel.style.height =
-          newHeight + 'px';
-
-      },
-      { passive: true }
-    );
-
-
-    document.addEventListener(
-      'touchend',
-      function () {
-
-        isResizing = false;
-
-      }
-    );
-
+    document.addEventListener('touchend', function () { isResizing = false; });
   </script>
-
 </body>
-
 </html>
 """
 
@@ -841,6 +651,57 @@ def typings():
         TYPINGS_TEMPLATE,
         days=days,
         total=total_count(days),
+    )
+
+
+@app.route("/typings/update", methods=["POST"])
+def typings_update():
+    """Receive the current typed text and broadcast it to all SSE subscribers."""
+    global _typing_text
+    data = request.get_json(silent=True) or {}
+    text = data.get("text", "")
+    with _typing_lock:
+        _typing_text = text
+    _broadcast(text)
+    return "", 204
+
+
+@app.route("/typings/stream")
+def typings_stream():
+    """SSE endpoint — streams live typing updates to every connected device."""
+    q: queue.Queue = queue.Queue(maxsize=64)
+
+    # Send current text immediately so the new subscriber is in sync
+    with _typing_lock:
+        initial = _typing_text
+        _typing_listeners.append(q)
+
+    def generate():
+        # Push the current snapshot first (JSON-encoded so newlines are safe)
+        yield f"event: update\ndata: {json.dumps(initial)}\n\n"
+        try:
+            while True:
+                try:
+                    text = q.get(timeout=20)
+                    yield f"event: update\ndata: {json.dumps(text)}\n\n"
+                except queue.Empty:
+                    yield ": heartbeat\n\n"
+        except GeneratorExit:
+            pass
+        finally:
+            with _typing_lock:
+                try:
+                    _typing_listeners.remove(q)
+                except ValueError:
+                    pass
+
+    return Response(
+        generate(),
+        mimetype="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
     )
 
 
@@ -918,7 +779,7 @@ def main():
     print("  Press Ctrl-C to stop.")
     print()
 
-    app.run(host=args.host, port=args.port, debug=False, use_reloader=False)
+    app.run(host=args.host, port=args.port, debug=False, use_reloader=False, threaded=True)
 
 
 if __name__ == "__main__":

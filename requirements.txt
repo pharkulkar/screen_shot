@@ -14,4 +14,4 @@ flask==3.0.3
 mss==9.0.2
 
 # Pillow: thumbnail generation for web gallery + Windows fallback capture
-Pillow==10.3.0
+Pillow==11.3.0

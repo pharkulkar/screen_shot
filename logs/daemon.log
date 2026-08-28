@@ -58,3 +58,288 @@
 [2026-08-28 14:56:11] [INFO] Signal 2 — shutting down.
 [2026-08-28 14:56:11] [INFO] Signal 15 — shutting down.
 [2026-08-28 14:56:11] [INFO] Daemon stopped.
+[2026-08-28 15:17:58] [INFO] ============================================================
+[2026-08-28 15:17:58] [INFO] silent-screenshot-daemon starting
+[2026-08-28 15:17:58] [INFO] Config: trigger='C' x4 within 2000ms
+[2026-08-28 15:17:58] [INFO] Output: D:\ss_pranay\screen_shot\screenshots
+[2026-08-28 15:17:58] [INFO] PID: 2376 | Python 3.13.7 | Windows
+[2026-08-28 15:17:58] [INFO] Global key listener active. Waiting for trigger sequence…
+[2026-08-28 15:18:17] [DEBUG] Key 'C' press 1/4
+[2026-08-28 15:18:32] [DEBUG] Timeout (15001ms). Restarting counter.
+[2026-08-28 15:18:32] [DEBUG] Key 'C' press 1/4
+[2026-08-28 15:18:32] [DEBUG] Key 'C' press 2/4
+[2026-08-28 15:18:32] [DEBUG] Key 'C' press 3/4
+[2026-08-28 15:18:33] [DEBUG] Key 'C' press 4/4
+[2026-08-28 15:18:33] [INFO] Trigger detected — saving to: D:\ss_pranay\screen_shot\screenshots\2026-08-28\screenshot-2026-08-28T15-18-33-199391.png
+[2026-08-28 15:18:33] [INFO] Screenshot saved: D:\ss_pranay\screen_shot\screenshots\2026-08-28\screenshot-2026-08-28T15-18-33-199391.png  (184 KB)
+[2026-08-28 15:19:18] [DEBUG] Key 'C' press 1/4
+[2026-08-28 15:20:39] [DEBUG] Timeout (80551ms). Restarting counter.
+[2026-08-28 15:20:39] [DEBUG] Key 'C' press 1/4
+[2026-08-28 15:20:39] [DEBUG] Key 'C' press 2/4
+[2026-08-28 15:20:39] [DEBUG] Key 'C' press 3/4
+[2026-08-28 15:20:39] [DEBUG] Key 'C' press 4/4
+[2026-08-28 15:20:39] [INFO] Trigger detected — saving to: D:\ss_pranay\screen_shot\screenshots\2026-08-28\screenshot-2026-08-28T15-20-39-883458.png
+[2026-08-28 15:20:40] [INFO] Screenshot saved: D:\ss_pranay\screen_shot\screenshots\2026-08-28\screenshot-2026-08-28T15-20-39-883458.png  (240 KB)
+[2026-08-28 15:22:15] [DEBUG] Key 'C' press 1/4
+[2026-08-28 15:22:15] [DEBUG] Key 'C' press 2/4
+[2026-08-28 15:26:20] [DEBUG] Timeout (244944ms). Restarting counter.
+[2026-08-28 15:26:20] [DEBUG] Key 'C' press 1/4
+[2026-08-28 15:26:24] [DEBUG] Timeout (3299ms). Restarting counter.
+[2026-08-28 15:26:24] [DEBUG] Key 'C' press 1/4
+[2026-08-28 15:28:53] [DEBUG] Timeout (148898ms). Restarting counter.
+[2026-08-28 15:28:53] [DEBUG] Key 'C' press 1/4
+[2026-08-28 15:30:01] [DEBUG] Timeout (68330ms). Restarting counter.
+[2026-08-28 15:30:01] [DEBUG] Key 'C' press 1/4
+[2026-08-28 15:30:02] [DEBUG] Key 'C' press 2/4
+[2026-08-28 15:30:02] [DEBUG] Key 'C' press 3/4
+[2026-08-28 15:33:13] [DEBUG] Timeout (190882ms). Restarting counter.
+[2026-08-28 15:33:13] [DEBUG] Key 'C' press 1/4
+[2026-08-28 15:33:37] [INFO] ============================================================
+[2026-08-28 15:33:37] [INFO] silent-screenshot-daemon starting
+[2026-08-28 15:33:37] [INFO] Config: trigger='C' x4 within 2000ms
+[2026-08-28 15:33:37] [INFO] Output: D:\ss_pranay\screen_shot\screenshots
+[2026-08-28 15:33:37] [INFO] PID: 14424 | Python 3.13.7 | Windows
+[2026-08-28 15:33:37] [INFO] Global key listener active. Waiting for trigger sequence…
+[2026-08-28 15:35:54] [DEBUG] Key 'C' press 1/4
+[2026-08-28 15:41:25] [DEBUG] Timeout (331303ms). Restarting counter.
+[2026-08-28 15:41:25] [DEBUG] Key 'C' press 1/4
+[2026-08-28 15:41:25] [DEBUG] Key 'C' press 2/4
+[2026-08-28 15:41:31] [DEBUG] Timeout (5391ms). Restarting counter.
+[2026-08-28 15:41:31] [DEBUG] Key 'C' press 1/4
+[2026-08-28 15:41:37] [DEBUG] Timeout (6458ms). Restarting counter.
+[2026-08-28 15:41:37] [DEBUG] Key 'C' press 1/4
+[2026-08-28 15:44:07] [DEBUG] Timeout (149981ms). Restarting counter.
+[2026-08-28 15:44:07] [DEBUG] Key 'C' press 1/4
+[2026-08-28 15:44:29] [INFO] ============================================================
+[2026-08-28 15:44:29] [INFO] silent-screenshot-daemon starting
+[2026-08-28 15:44:29] [INFO] Config: trigger='C' x4 within 2000ms
+[2026-08-28 15:44:29] [INFO] Output: D:\ss_pranay\screen_shot\screenshots
+[2026-08-28 15:44:29] [INFO] PID: 18140 | Python 3.13.7 | Windows
+[2026-08-28 15:44:29] [INFO] Global key listener active. Waiting for trigger sequence…
+[2026-08-28 15:47:06] [DEBUG] Key 'C' press 1/4
+[2026-08-28 15:50:28] [INFO] ============================================================
+[2026-08-28 15:50:28] [INFO] silent-screenshot-daemon starting
+[2026-08-28 15:50:28] [INFO] Config: trigger='C' x4 within 2000ms
+[2026-08-28 15:50:28] [INFO] Output: D:\ss_pranay\screen_shot\screenshots
+[2026-08-28 15:50:28] [INFO] PID: 20188 | Python 3.13.7 | Windows
+[2026-08-28 15:50:28] [INFO] Global key listener active. Waiting for trigger sequence…
+[2026-08-28 15:51:52] [DEBUG] Key 'C' press 1/4
+[2026-08-28 15:56:15] [INFO] ============================================================
+[2026-08-28 15:56:15] [INFO] silent-screenshot-daemon starting
+[2026-08-28 15:56:15] [INFO] Config: trigger='C' x4 within 2000ms
+[2026-08-28 15:56:15] [INFO] Output: D:\ss_pranay\screen_shot\screenshots
+[2026-08-28 15:56:15] [INFO] PID: 10132 | Python 3.13.7 | Windows
+[2026-08-28 15:56:15] [INFO] Global key listener active. Waiting for trigger sequence…
+[2026-08-28 15:56:23] [DEBUG] Key 'C' press 1/4
+[2026-08-28 15:56:24] [DEBUG] Key 'C' press 2/4
+[2026-08-28 15:56:24] [DEBUG] Key 'C' press 3/4
+[2026-08-28 15:56:24] [DEBUG] Key 'C' press 4/4
+[2026-08-28 15:56:24] [INFO] Trigger detected — saving to: D:\ss_pranay\screen_shot\screenshots\2026-08-28\screenshot-2026-08-28T15-56-24-500833.png
+[2026-08-28 15:56:24] [INFO] Screenshot saved: D:\ss_pranay\screen_shot\screenshots\2026-08-28\screenshot-2026-08-28T15-56-24-500833.png  (236 KB)
+[2026-08-28 15:59:01] [DEBUG] Key 'C' press 1/4
+[2026-08-28 15:59:01] [DEBUG] Key 'C' press 2/4
+[2026-08-28 15:59:01] [DEBUG] Key 'C' press 3/4
+[2026-08-28 15:59:02] [DEBUG] Key 'C' press 4/4
+[2026-08-28 15:59:02] [INFO] Trigger detected — saving to: D:\ss_pranay\screen_shot\screenshots\2026-08-28\screenshot-2026-08-28T15-59-02-162230.png
+[2026-08-28 15:59:02] [INFO] Screenshot saved: D:\ss_pranay\screen_shot\screenshots\2026-08-28\screenshot-2026-08-28T15-59-02-162230.png  (265 KB)
+[2026-08-28 15:59:59] [DEBUG] Key 'C' press 1/4
+[2026-08-28 15:59:59] [DEBUG] Key 'C' press 2/4
+[2026-08-28 15:59:59] [DEBUG] Key 'C' press 3/4
+[2026-08-28 15:59:59] [DEBUG] Key 'C' press 4/4
+[2026-08-28 15:59:59] [INFO] Trigger detected — saving to: D:\ss_pranay\screen_shot\screenshots\2026-08-28\screenshot-2026-08-28T15-59-59-616281.png
+[2026-08-28 15:59:59] [INFO] Screenshot saved: D:\ss_pranay\screen_shot\screenshots\2026-08-28\screenshot-2026-08-28T15-59-59-616281.png  (239 KB)
+[2026-08-28 16:00:59] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:00:59] [DEBUG] Key 'C' press 2/4
+[2026-08-28 16:00:59] [DEBUG] Key 'C' press 3/4
+[2026-08-28 16:00:59] [DEBUG] Key 'C' press 4/4
+[2026-08-28 16:00:59] [INFO] Trigger detected — saving to: D:\ss_pranay\screen_shot\screenshots\2026-08-28\screenshot-2026-08-28T16-00-59-615254.png
+[2026-08-28 16:00:59] [INFO] Screenshot saved: D:\ss_pranay\screen_shot\screenshots\2026-08-28\screenshot-2026-08-28T16-00-59-615254.png  (233 KB)
+[2026-08-28 16:00:59] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:05:20] [DEBUG] Timeout (261054ms). Restarting counter.
+[2026-08-28 16:05:20] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:05:21] [DEBUG] Key 'C' press 2/4
+[2026-08-28 16:05:21] [DEBUG] Key 'C' press 3/4
+[2026-08-28 16:05:21] [DEBUG] Key 'C' press 4/4
+[2026-08-28 16:05:21] [INFO] Trigger detected — saving to: D:\ss_pranay\screen_shot\screenshots\2026-08-28\screenshot-2026-08-28T16-05-21-441212.png
+[2026-08-28 16:05:21] [INFO] Screenshot saved: D:\ss_pranay\screen_shot\screenshots\2026-08-28\screenshot-2026-08-28T16-05-21-441212.png  (229 KB)
+[2026-08-28 16:05:31] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:05:31] [DEBUG] Key 'C' press 2/4
+[2026-08-28 16:05:56] [DEBUG] Timeout (24485ms). Restarting counter.
+[2026-08-28 16:05:56] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:06:06] [DEBUG] Timeout (10598ms). Restarting counter.
+[2026-08-28 16:06:06] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:06:07] [DEBUG] Key 'C' press 2/4
+[2026-08-28 16:06:21] [DEBUG] Timeout (14101ms). Restarting counter.
+[2026-08-28 16:06:21] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:06:31] [DEBUG] Timeout (9644ms). Restarting counter.
+[2026-08-28 16:06:31] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:06:42] [DEBUG] Timeout (11758ms). Restarting counter.
+[2026-08-28 16:06:42] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:06:57] [DEBUG] Timeout (14081ms). Restarting counter.
+[2026-08-28 16:06:57] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:07:14] [DEBUG] Timeout (17057ms). Restarting counter.
+[2026-08-28 16:07:14] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:07:31] [DEBUG] Timeout (17328ms). Restarting counter.
+[2026-08-28 16:07:31] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:07:33] [DEBUG] Timeout (2067ms). Restarting counter.
+[2026-08-28 16:07:33] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:07:36] [DEBUG] Timeout (2955ms). Restarting counter.
+[2026-08-28 16:07:36] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:08:13] [DEBUG] Timeout (36868ms). Restarting counter.
+[2026-08-28 16:08:13] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:08:13] [DEBUG] Key 'C' press 2/4
+[2026-08-28 16:08:13] [DEBUG] Key 'C' press 3/4
+[2026-08-28 16:08:13] [DEBUG] Key 'C' press 4/4
+[2026-08-28 16:08:13] [INFO] Trigger detected — saving to: D:\ss_pranay\screen_shot\screenshots\2026-08-28\screenshot-2026-08-28T16-08-13-765445.png
+[2026-08-28 16:08:13] [INFO] Screenshot saved: D:\ss_pranay\screen_shot\screenshots\2026-08-28\screenshot-2026-08-28T16-08-13-765445.png  (224 KB)
+[2026-08-28 16:10:00] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:10:39] [DEBUG] Timeout (38487ms). Restarting counter.
+[2026-08-28 16:10:39] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:11:43] [DEBUG] Timeout (64607ms). Restarting counter.
+[2026-08-28 16:11:43] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:11:54] [DEBUG] Timeout (10526ms). Restarting counter.
+[2026-08-28 16:11:54] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:12:46] [DEBUG] Timeout (52357ms). Restarting counter.
+[2026-08-28 16:12:46] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:13:32] [DEBUG] Timeout (45388ms). Restarting counter.
+[2026-08-28 16:13:32] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:13:32] [DEBUG] Key 'C' press 2/4
+[2026-08-28 16:13:32] [DEBUG] Key 'C' press 3/4
+[2026-08-28 16:13:32] [DEBUG] Key 'C' press 4/4
+[2026-08-28 16:13:32] [INFO] Trigger detected — saving to: D:\ss_pranay\screen_shot\screenshots\2026-08-28\screenshot-2026-08-28T16-13-32-526083.png
+[2026-08-28 16:13:32] [INFO] Screenshot saved: D:\ss_pranay\screen_shot\screenshots\2026-08-28\screenshot-2026-08-28T16-13-32-526083.png  (266 KB)
+[2026-08-28 16:15:33] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:16:23] [DEBUG] Timeout (50582ms). Restarting counter.
+[2026-08-28 16:16:23] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:17:05] [DEBUG] Timeout (41840ms). Restarting counter.
+[2026-08-28 16:17:05] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:17:35] [DEBUG] Timeout (29984ms). Restarting counter.
+[2026-08-28 16:17:35] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:17:35] [DEBUG] Key 'C' press 2/4
+[2026-08-28 16:17:36] [DEBUG] Key 'C' press 3/4
+[2026-08-28 16:17:41] [DEBUG] Timeout (5959ms). Restarting counter.
+[2026-08-28 16:17:41] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:17:45] [DEBUG] Timeout (3753ms). Restarting counter.
+[2026-08-28 16:17:45] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:17:45] [DEBUG] Key 'C' press 2/4
+[2026-08-28 16:17:46] [DEBUG] Key 'C' press 3/4
+[2026-08-28 16:17:46] [DEBUG] Key 'C' press 4/4
+[2026-08-28 16:17:46] [INFO] Trigger detected — saving to: D:\ss_pranay\screen_shot\screenshots\2026-08-28\screenshot-2026-08-28T16-17-46-231989.png
+[2026-08-28 16:17:46] [INFO] Screenshot saved: D:\ss_pranay\screen_shot\screenshots\2026-08-28\screenshot-2026-08-28T16-17-46-231989.png  (244 KB)
+[2026-08-28 16:18:09] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:18:13] [DEBUG] Timeout (3825ms). Restarting counter.
+[2026-08-28 16:18:13] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:20:23] [DEBUG] Timeout (129905ms). Restarting counter.
+[2026-08-28 16:20:23] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:20:23] [DEBUG] Key 'C' press 2/4
+[2026-08-28 16:20:23] [DEBUG] Key 'C' press 3/4
+[2026-08-28 16:20:23] [DEBUG] Key 'C' press 4/4
+[2026-08-28 16:20:23] [INFO] Trigger detected — saving to: D:\ss_pranay\screen_shot\screenshots\2026-08-28\screenshot-2026-08-28T16-20-23-835420.png
+[2026-08-28 16:20:24] [INFO] Screenshot saved: D:\ss_pranay\screen_shot\screenshots\2026-08-28\screenshot-2026-08-28T16-20-23-835420.png  (266 KB)
+[2026-08-28 16:20:24] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:22:28] [DEBUG] Timeout (123804ms). Restarting counter.
+[2026-08-28 16:22:28] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:22:30] [DEBUG] Timeout (2140ms). Restarting counter.
+[2026-08-28 16:22:30] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:23:13] [DEBUG] Timeout (43483ms). Restarting counter.
+[2026-08-28 16:23:13] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:25:35] [DEBUG] Timeout (141853ms). Restarting counter.
+[2026-08-28 16:25:35] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:26:51] [DEBUG] Timeout (75877ms). Restarting counter.
+[2026-08-28 16:26:51] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:28:33] [DEBUG] Timeout (102244ms). Restarting counter.
+[2026-08-28 16:28:33] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:30:25] [DEBUG] Timeout (112109ms). Restarting counter.
+[2026-08-28 16:30:25] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:30:30] [DEBUG] Timeout (4436ms). Restarting counter.
+[2026-08-28 16:30:30] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:32:41] [DEBUG] Timeout (131679ms). Restarting counter.
+[2026-08-28 16:32:41] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:34:18] [DEBUG] Timeout (96589ms). Restarting counter.
+[2026-08-28 16:34:18] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:34:23] [DEBUG] Timeout (4717ms). Restarting counter.
+[2026-08-28 16:34:23] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:35:10] [DEBUG] Timeout (47310ms). Restarting counter.
+[2026-08-28 16:35:10] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:35:14] [DEBUG] Timeout (4197ms). Restarting counter.
+[2026-08-28 16:35:14] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:35:33] [DEBUG] Timeout (18419ms). Restarting counter.
+[2026-08-28 16:35:33] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:35:49] [DEBUG] Timeout (16339ms). Restarting counter.
+[2026-08-28 16:35:49] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:36:54] [DEBUG] Timeout (64578ms). Restarting counter.
+[2026-08-28 16:36:54] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:37:00] [DEBUG] Timeout (6745ms). Restarting counter.
+[2026-08-28 16:37:00] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:37:04] [DEBUG] Timeout (3819ms). Restarting counter.
+[2026-08-28 16:37:04] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:40:01] [DEBUG] Timeout (176860ms). Restarting counter.
+[2026-08-28 16:40:01] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:40:31] [DEBUG] Timeout (30218ms). Restarting counter.
+[2026-08-28 16:40:31] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:42:24] [DEBUG] Timeout (113092ms). Restarting counter.
+[2026-08-28 16:42:24] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:42:34] [DEBUG] Timeout (9736ms). Restarting counter.
+[2026-08-28 16:42:34] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:42:38] [DEBUG] Timeout (4218ms). Restarting counter.
+[2026-08-28 16:42:38] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:42:59] [DEBUG] Timeout (20541ms). Restarting counter.
+[2026-08-28 16:42:59] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:43:13] [DEBUG] Timeout (14710ms). Restarting counter.
+[2026-08-28 16:43:13] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:44:42] [DEBUG] Timeout (88333ms). Restarting counter.
+[2026-08-28 16:44:42] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:45:55] [DEBUG] Timeout (72831ms). Restarting counter.
+[2026-08-28 16:45:55] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:46:23] [DEBUG] Timeout (28674ms). Restarting counter.
+[2026-08-28 16:46:23] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:46:55] [DEBUG] Timeout (31474ms). Restarting counter.
+[2026-08-28 16:46:55] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:47:02] [DEBUG] Timeout (7328ms). Restarting counter.
+[2026-08-28 16:47:02] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:47:38] [DEBUG] Timeout (36352ms). Restarting counter.
+[2026-08-28 16:47:38] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:48:00] [DEBUG] Timeout (21720ms). Restarting counter.
+[2026-08-28 16:48:00] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:48:10] [DEBUG] Timeout (9895ms). Restarting counter.
+[2026-08-28 16:48:10] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:50:06] [DEBUG] Timeout (115448ms). Restarting counter.
+[2026-08-28 16:50:06] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:50:31] [DEBUG] Timeout (25817ms). Restarting counter.
+[2026-08-28 16:50:31] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:50:32] [DEBUG] Key 'C' press 2/4
+[2026-08-28 16:52:01] [DEBUG] Timeout (89700ms). Restarting counter.
+[2026-08-28 16:52:01] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:52:02] [DEBUG] Key 'C' press 2/4
+[2026-08-28 16:52:15] [DEBUG] Timeout (12557ms). Restarting counter.
+[2026-08-28 16:52:15] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:53:57] [DEBUG] Timeout (102325ms). Restarting counter.
+[2026-08-28 16:53:57] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:54:04] [DEBUG] Timeout (6811ms). Restarting counter.
+[2026-08-28 16:54:04] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:54:46] [DEBUG] Timeout (42672ms). Restarting counter.
+[2026-08-28 16:54:46] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:54:51] [DEBUG] Timeout (4856ms). Restarting counter.
+[2026-08-28 16:54:51] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:54:58] [DEBUG] Timeout (6590ms). Restarting counter.
+[2026-08-28 16:54:58] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:55:02] [DEBUG] Timeout (3809ms). Restarting counter.
+[2026-08-28 16:55:02] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:55:02] [DEBUG] Key 'C' press 2/4
+[2026-08-28 16:55:51] [DEBUG] Timeout (48500ms). Restarting counter.
+[2026-08-28 16:55:51] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:56:21] [DEBUG] Timeout (30386ms). Restarting counter.
+[2026-08-28 16:56:21] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:57:08] [DEBUG] Timeout (47304ms). Restarting counter.
+[2026-08-28 16:57:08] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:57:22] [DEBUG] Timeout (13246ms). Restarting counter.
+[2026-08-28 16:57:22] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:57:30] [DEBUG] Timeout (8585ms). Restarting counter.
+[2026-08-28 16:57:30] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:58:03] [DEBUG] Timeout (32821ms). Restarting counter.
+[2026-08-28 16:58:03] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:58:34] [DEBUG] Timeout (30948ms). Restarting counter.
+[2026-08-28 16:58:34] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:58:45] [DEBUG] Timeout (10995ms). Restarting counter.
+[2026-08-28 16:58:45] [DEBUG] Key 'C' press 1/4
+[2026-08-28 16:58:45] [DEBUG] Key 'C' press 2/4
