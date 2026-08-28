@@ -255,12 +255,24 @@ TYPINGS_TEMPLATE = """<!DOCTYPE html>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: #0f0f0f;
-      color: #e0e0e0;
-      min-height: 100vh;
-    }
+    # body {
+    #   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    #   background: #0f0f0f;
+    #   color: #e0e0e0;
+    #   min-height: 100vh;
+    # }
+    
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: transparent !important;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    user-select: none;
+    -webkit-app-region: drag; /* Makes the entire window draggable */
+  }
 
     .app {
       width: 100%;
@@ -283,7 +295,11 @@ TYPINGS_TEMPLATE = """<!DOCTYPE html>
       margin-bottom: 5px;
     }
 
-    header p { font-size: 0.85rem; color: #777; }
+    header p { 
+    font-size: 0.85rem; 
+    # color: #777; 
+    color: #FFF; 
+    }
 
     .workspace {
       flex: 1;
@@ -294,7 +310,7 @@ TYPINGS_TEMPLATE = """<!DOCTYPE html>
     }
 
     .panel {
-      background: #171717;
+      background: rgba(0,0,0,0.2);
       border: 1px solid #2a2a2a;
       border-radius: 12px;
       overflow: hidden;
@@ -325,7 +341,8 @@ TYPINGS_TEMPLATE = """<!DOCTYPE html>
       font-weight: 600;
       letter-spacing: 0.06em;
       text-transform: uppercase;
-      color: #777;
+      # color: #777;
+      color: #FFF;
     }
 
     .status-dot {
@@ -418,6 +435,21 @@ TYPINGS_TEMPLATE = """<!DOCTYPE html>
       color: #555;
       flex-shrink: 0;
     }
+    /* FULL OVERLAY STATE */
+    #overlay-card {
+      width: 100%;
+      height: 100%;
+      box-sizing: border-box;
+      background: rgba(20, 20, 30, 0.65);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 12px;
+      padding: 16px;
+      color: white;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
 
     @media (max-width: 768px) {
       .app { padding: 16px; gap: 14px; }
@@ -440,6 +472,7 @@ TYPINGS_TEMPLATE = """<!DOCTYPE html>
   </style>
 </head>
 <body>
+<div id="overlay-card">
   <main class="app">
 
     <header>
@@ -480,7 +513,7 @@ TYPINGS_TEMPLATE = """<!DOCTYPE html>
     </div>
 
   </main>
-
+</div>
   <script>
     const input          = document.getElementById('typing-input');
     const preview        = document.getElementById('typing-preview');
