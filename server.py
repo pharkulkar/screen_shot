@@ -279,11 +279,12 @@ TYPINGS_TEMPLATE = """
       color: #777;
     }
 
-    .content {
+    .workspace {
       flex: 1;
-      display: grid;
-      grid-template-rows: minmax(180px, 1fr) minmax(180px, 1fr);
+      display: flex;
+      flex-direction: column;
       gap: 20px;
+      min-height: 0;
     }
 
     .panel {
@@ -291,14 +292,29 @@ TYPINGS_TEMPLATE = """
       border: 1px solid #2a2a2a;
       border-radius: 12px;
       overflow: hidden;
-      min-height: 0;
       display: flex;
       flex-direction: column;
+      min-height: 0;
+    }
+
+    .input-panel {
+      min-height: 180px;
+      height: 300px;
+      max-height: 70vh;
     }
 
     .panel-header {
+      min-height: 48px;
       padding: 12px 16px;
       border-bottom: 1px solid #2a2a2a;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+
+    .panel-title {
       font-size: 0.78rem;
       font-weight: 600;
       letter-spacing: 0.06em;
@@ -306,10 +322,34 @@ TYPINGS_TEMPLATE = """
       color: #777;
     }
 
+    .collapse-button {
+      border: 1px solid #333;
+      background: #222;
+      color: #aaa;
+      width: 30px;
+      height: 30px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 1rem;
+      line-height: 1;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .collapse-button:hover {
+      background: #2a2a2a;
+      color: #fff;
+    }
+
+    .input-wrapper {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+    }
+
     textarea {
       width: 100%;
-      flex: 1;
-      resize: none;
+      height: 100%;
+      resize: vertical;
       border: none;
       outline: none;
       background: transparent;
@@ -324,12 +364,38 @@ TYPINGS_TEMPLATE = """
       color: #555;
     }
 
+    .resize-handle {
+      height: 10px;
+      cursor: ns-resize;
+      background: transparent;
+      flex-shrink: 0;
+      position: relative;
+    }
+
+    .resize-handle::after {
+      content: "";
+      width: 40px;
+      height: 4px;
+      border-radius: 10px;
+      background: #3a3a3a;
+      position: absolute;
+      left: 50%;
+      top: 3px;
+      transform: translateX(-50%);
+    }
+
+    .preview-panel {
+      flex: 1;
+      min-height: 250px;
+    }
+
     .preview {
       flex: 1;
-      padding: 18px;
+      min-height: 0;
+      padding: 22px;
       overflow-y: auto;
       font-size: 1rem;
-      line-height: 1.6;
+      line-height: 1.7;
       color: #f0f0f0;
       white-space: pre-wrap;
       word-break: break-word;
@@ -339,55 +405,88 @@ TYPINGS_TEMPLATE = """
       color: #555;
     }
 
+    .input-panel.collapsed {
+      height: 48px !important;
+      min-height: 48px;
+    }
+
+    .input-panel.collapsed .input-wrapper,
+    .input-panel.collapsed .resize-handle {
+      display: none;
+    }
+
+    .input-panel.collapsed .collapse-button {
+      transform: rotate(180deg);
+    }
+
     .footer {
       text-align: right;
       font-size: 0.75rem;
       color: #555;
+      flex-shrink: 0;
     }
 
-    /*
-      Tablet and desktop:
-      Input and preview appear side by side.
-    */
-    @media (min-width: 768px) {
+    @media (max-width: 768px) {
 
       .app {
-        padding: 32px;
+        padding: 16px;
+        gap: 14px;
       }
 
-      .content {
-        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-        grid-template-rows: 1fr;
+      .workspace {
+        gap: 14px;
       }
 
-      .panel {
-        min-height: 500px;
+      .input-panel {
+        height: 260px;
+        min-height: 140px;
+      }
+
+      .preview-panel {
+        min-height: 220px;
+      }
+
+      textarea,
+      .preview {
+        font-size: 0.95rem;
+      }
+
+      textarea {
+        padding: 14px;
+      }
+
+      .preview {
+        padding: 16px;
       }
 
     }
 
-    /*
-      Smaller mobile devices
-    */
     @media (max-width: 480px) {
 
       .app {
-        padding: 14px;
-        gap: 14px;
+        padding: 12px;
       }
 
       header h1 {
         font-size: 1.2rem;
       }
 
-      .content {
-        gap: 14px;
+      header p {
+        font-size: 0.78rem;
       }
 
-      textarea,
-      .preview {
-        padding: 14px;
-        font-size: 0.95rem;
+      .input-panel {
+        height: 220px;
+      }
+
+      .panel-header {
+        min-height: 44px;
+        padding: 10px 12px;
+      }
+
+      .collapse-button {
+        width: 28px;
+        height: 28px;
       }
 
     }
@@ -403,34 +502,66 @@ TYPINGS_TEMPLATE = """
 ```
 <header>
   <h1>Live Typing</h1>
-  <p>Whatever you type below will appear here instantly.</p>
+  <p>Type in the editor below and see your text appear instantly.</p>
 </header>
 
 
-<section class="content">
+<section class="workspace">
+
 
   <!-- Input Panel -->
-  <div class="panel">
+  <div class="panel input-panel" id="input-panel">
 
     <div class="panel-header">
-      Type Here
+
+      <span class="panel-title">
+        Type Here
+      </span>
+
+      <button
+        class="collapse-button"
+        id="collapse-button"
+        type="button"
+        title="Collapse input"
+        aria-label="Collapse input"
+      >
+        ▲
+      </button>
+
     </div>
 
-    <textarea
-      id="typing-input"
-      placeholder="Start typing here..."
-      autofocus
-    ></textarea>
+
+    <div class="input-wrapper">
+
+      <textarea
+        id="typing-input"
+        placeholder="Start typing here..."
+        autofocus
+      ></textarea>
+
+    </div>
+
+
+    <div
+      class="resize-handle"
+      id="resize-handle"
+      title="Drag to resize"
+    ></div>
 
   </div>
 
 
   <!-- Preview Panel -->
-  <div class="panel">
+  <div class="panel preview-panel">
 
     <div class="panel-header">
-      Live Preview
+
+      <span class="panel-title">
+        Live Preview
+      </span>
+
     </div>
+
 
     <div
       id="typing-preview"
@@ -440,6 +571,7 @@ TYPINGS_TEMPLATE = """
     </div>
 
   </div>
+
 
 </section>
 
@@ -457,6 +589,14 @@ TYPINGS_TEMPLATE = """
     const preview = document.getElementById('typing-preview');
     const characterCount = document.getElementById('character-count');
 
+    const inputPanel = document.getElementById('input-panel');
+    const collapseButton = document.getElementById('collapse-button');
+    const resizeHandle = document.getElementById('resize-handle');
+
+
+    /*
+      Live typing preview
+    */
     input.addEventListener('input', function () {
 
       const value = input.value;
@@ -470,12 +610,175 @@ TYPINGS_TEMPLATE = """
 
       } else {
 
-        preview.textContent = 'Your typed text will appear here...';
+        preview.textContent =
+          'Your typed text will appear here...';
+
         preview.classList.add('placeholder');
 
       }
 
     });
+
+
+    /*
+      Collapse / Expand input panel
+    */
+    collapseButton.addEventListener('click', function () {
+
+      inputPanel.classList.toggle('collapsed');
+
+      const isCollapsed =
+        inputPanel.classList.contains('collapsed');
+
+      collapseButton.textContent =
+        isCollapsed ? '▼' : '▲';
+
+      collapseButton.title =
+        isCollapsed ? 'Expand input' : 'Collapse input';
+
+      collapseButton.setAttribute(
+        'aria-label',
+        isCollapsed ? 'Expand input' : 'Collapse input'
+      );
+
+    });
+
+
+    /*
+      Resize input panel by dragging
+    */
+    let isResizing = false;
+    let startY = 0;
+    let startHeight = 0;
+
+
+    resizeHandle.addEventListener('mousedown', function (event) {
+
+      if (inputPanel.classList.contains('collapsed')) {
+        return;
+      }
+
+      isResizing = true;
+
+      startY = event.clientY;
+
+      startHeight =
+        inputPanel.getBoundingClientRect().height;
+
+      document.body.style.cursor = 'ns-resize';
+
+      document.body.style.userSelect = 'none';
+
+    });
+
+
+    document.addEventListener('mousemove', function (event) {
+
+      if (!isResizing) {
+        return;
+      }
+
+      const difference =
+        event.clientY - startY;
+
+      let newHeight =
+        startHeight + difference;
+
+      const minimumHeight = 120;
+
+      const maximumHeight =
+        window.innerHeight * 0.75;
+
+      newHeight = Math.max(
+        minimumHeight,
+        Math.min(newHeight, maximumHeight)
+      );
+
+      inputPanel.style.height =
+        newHeight + 'px';
+
+    });
+
+
+    document.addEventListener('mouseup', function () {
+
+      if (!isResizing) {
+        return;
+      }
+
+      isResizing = false;
+
+      document.body.style.cursor = '';
+
+      document.body.style.userSelect = '';
+
+    });
+
+
+    /*
+      Touch support for mobile devices
+    */
+    resizeHandle.addEventListener(
+      'touchstart',
+      function (event) {
+
+        if (inputPanel.classList.contains('collapsed')) {
+          return;
+        }
+
+        isResizing = true;
+
+        startY =
+          event.touches[0].clientY;
+
+        startHeight =
+          inputPanel.getBoundingClientRect().height;
+
+      },
+      { passive: true }
+    );
+
+
+    document.addEventListener(
+      'touchmove',
+      function (event) {
+
+        if (!isResizing) {
+          return;
+        }
+
+        const difference =
+          event.touches[0].clientY - startY;
+
+        let newHeight =
+          startHeight + difference;
+
+        const minimumHeight = 120;
+
+        const maximumHeight =
+          window.innerHeight * 0.75;
+
+        newHeight = Math.max(
+          minimumHeight,
+          Math.min(newHeight, maximumHeight)
+        );
+
+        inputPanel.style.height =
+          newHeight + 'px';
+
+      },
+      { passive: true }
+    );
+
+
+    document.addEventListener(
+      'touchend',
+      function () {
+
+        isResizing = false;
+
+      }
+    );
 
   </script>
 
@@ -483,6 +786,7 @@ TYPINGS_TEMPLATE = """
 
 </html>
 """
+
 
 
 
@@ -531,7 +835,7 @@ def index():
     )
 
 @app.route("/typings")
-def index():
+def typings():
     days = get_days()
     return render_template_string(
         TYPINGS_TEMPLATE,
