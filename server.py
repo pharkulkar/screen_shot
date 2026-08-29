@@ -268,11 +268,25 @@ TYPINGS_TEMPLATE = """<!DOCTYPE html>
     background: transparent !important;
     width: 100%;
     height: 100%;
-    overflow: hidden;
+    overflow-y: auto !important;
     font-family: -apple-system, BlinkMacSystemFont, sans-serif;
     user-select: none;
     -webkit-app-region: drag; /* Makes the entire window draggable */
   }
+  body {
+    -webkit-app-region: drag;
+  }
+  /* Custom Scrollbar for transparent background */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
 
     .app {
       width: 100%;
@@ -313,10 +327,12 @@ TYPINGS_TEMPLATE = """<!DOCTYPE html>
       background: rgba(0,0,0,0.2);
       border: 1px solid #2a2a2a;
       border-radius: 12px;
-      overflow: hidden;
       display: flex;
       flex-direction: column;
       min-height: 0;
+      -webkit-app-region: no-drag !important;
+      pointer-events: auto !important;
+      overflow-y: auto !important;
     }
 
     .input-panel {

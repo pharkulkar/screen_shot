@@ -1,0 +1,55 @@
+{
+    "possible_questions": [],
+    "raw_items": [
+        {
+            "text": "4",
+            "confidence": 0.9993693232536316,
+            "box": [
+                0,
+                27,
+                30,
+                73
+            ]
+        },
+        {
+            "text": "Query Tuning·SHORT",
+            "confidence": 0.9922249913215637,
+            "box": [
+                1471,
+                34,
+                1822,
+                75
+            ]
+        },
+        {
+            "text": "A reporting query that used to be fast now takes 30 seconds. Walk through your diagnosis and",
+            "confidence": 0.9964746236801147,
+            "box": [
+                0,
+                129,
+                1812,
+                180
+            ]
+        },
+        {
+            "text": "the fixes you would try (indexes, query shape, statistics).",
+            "confidence": 0.9989784359931946,
+            "box": [
+                0,
+                200,
+                1078,
+                248
+            ]
+        },
+        {
+            "text": "Type your answer...",
+            "confidence": 0.9950753450393677,
+            "box": [
+                34,
+                344,
+                389,
+                393
+            ]
+        }
+    ]
+}
