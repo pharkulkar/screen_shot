@@ -2,53 +2,203 @@
     "possible_questions": [],
     "raw_items": [
         {
-            "text": "4",
-            "confidence": 0.9993693232536316,
+            "text": "~/Desktop/pranay/Job_Hunt/screen_shot- Python run.sh",
+            "confidence": 0.9748529195785522,
             "box": [
+                345,
                 0,
-                27,
-                30,
-                73
+                1066,
+                35
             ]
         },
         {
-            "text": "Query Tuning·SHORT",
-            "confidence": 0.9922249913215637,
+            "text": "ranayharkulkar@Pranays-MacBook-Air screen_shot % cd /Users/pranayharkulkar/Desktop/pranay/Job_Hunt/screen_shot",
+            "confidence": 0.9997800588607788,
             "box": [
-                1471,
+                0,
                 34,
-                1822,
-                75
+                1580,
+                90
             ]
         },
         {
-            "text": "A reporting query that used to be fast now takes 30 seconds. Walk through your diagnosis and",
-            "confidence": 0.9964746236801147,
+            "text": "/run.sh",
+            "confidence": 0.9999759793281555,
             "box": [
                 0,
-                129,
-                1812,
-                180
+                81,
+                107,
+                109
             ]
         },
         {
-            "text": "the fixes you would try (indexes, query shape, statistics).",
-            "confidence": 0.9989784359931946,
+            "text": "tarting screenshot daemon...",
+            "confidence": 0.9992333650588989,
             "box": [
                 0,
-                200,
-                1078,
-                248
+                111,
+                405,
+                140
             ]
         },
         {
-            "text": "Type your answer...",
-            "confidence": 0.9950753450393677,
+            "text": "tarting screenshot viewer server...",
+            "confidence": 0.9992562532424927,
             "box": [
-                34,
+                0,
+                140,
+                503,
+                170
+            ]
+        },
+        {
+            "text": "Daemon PID : 83356",
+            "confidence": 0.9904268980026245,
+            "box": [
+                1,
+                197,
+                275,
+                225
+            ]
+        },
+        {
+            "text": "Server PID : 83358",
+            "confidence": 0.9495224356651306,
+            "box": [
+                2,
+                225,
+                273,
+                253
+            ]
+        },
+        {
+            "text": "Gallery",
+            "confidence": 0.9999359250068665,
+            "box": [
+                1,
+                254,
+                113,
+                282
+            ]
+        },
+        {
+            "text": ": http://localhost:5000",
+            "confidence": 0.985078752040863,
+            "box": [
+                168,
+                257,
+                503,
+                284
+            ]
+        },
+        {
+            "text": ":/Users/pranayharkulkar/Desktop/pranay/Job_Hunt/screen_shot/logs/daemon.log",
+            "confidence": 0.9994823336601257,
+            "box": [
+                168,
+                279,
+                1271,
+                316
+            ]
+        },
+        {
+            "text": "Log",
+            "confidence": 0.9999818801879883,
+            "box": [
+                0,
+                283,
+                57,
+                317
+            ]
+        },
+        {
+            "text": "ess Ctrl-C to stop both.",
+            "confidence": 0.9961368441581726,
+            "box": [
+                0,
                 344,
-                389,
-                393
+                357,
+                376
+            ]
+        },
+        {
+            "text": "Screenshot viewer with Crop, Incremental Versioning & OCR",
+            "confidence": 0.9985786080360413,
+            "box": [
+                0,
+                400,
+                833,
+                431
+            ]
+        },
+        {
+            "text": "Local (this machine): http://localhost:5000",
+            "confidence": 0.9768295884132385,
+            "box": [
+                1,
+                434,
+                650,
+                458
+            ]
+        },
+        {
+            "text": "Network (iPhone/etc): http://192.168.0.103:5000",
+            "confidence": 0.9850807785987854,
+            "box": [
+                0,
+                460,
+                705,
+                489
+            ]
+        },
+        {
+            "text": "/Users/pranayharkulkar/Desktop/pranay/Job_Hunt/screen_shot/screenshots",
+            "confidence": 0.9999556541442871,
+            "box": [
+                342,
+                516,
+                1377,
+                550
+            ]
+        },
+        {
+            "text": "Screenshots folder:",
+            "confidence": 0.9999058246612549,
+            "box": [
+                0,
+                518,
+                288,
+                548
+            ]
+        },
+        {
+            "text": "Press Ctrl-C to stop.",
+            "confidence": 0.9927846193313599,
+            "box": [
+                0,
+                573,
+                311,
+                602
+            ]
+        },
+        {
+            "text": "Serving Flask app 'server'",
+            "confidence": 0.9871949553489685,
+            "box": [
+                0,
+                631,
+                393,
+                658
+            ]
+        },
+        {
+            "text": "Debug mode: off",
+            "confidence": 0.989054262638092,
+            "box": [
+                15,
+                663,
+                240,
+                687
             ]
         }
     ]
