@@ -816,3 +816,17 @@
 [2026-08-30 16:22:35] [DEBUG] Key 'C' press 1/4
 [2026-08-30 16:24:37] [DEBUG] Timeout (122727ms). Restarting counter.
 [2026-08-30 16:24:37] [DEBUG] Key 'C' press 1/4
+[2026-09-01 23:33:22] [INFO] ============================================================
+[2026-09-01 23:33:22] [INFO] silent-screenshot-daemon starting
+[2026-09-01 23:33:22] [INFO] Config: trigger='C' x4 within 2000ms
+[2026-09-01 23:33:22] [INFO] Quit:   'Q' x4 within 2000ms
+[2026-09-01 23:33:22] [INFO] Output: /Users/pranayharkulkar/Desktop/pranay/Job_Hunt/screen_shot/screenshots
+[2026-09-01 23:33:22] [INFO] PID: 17214 | Python 3.12.4 | Darwin
+[2026-09-01 23:33:22] [INFO] Global key listener active. Waiting for trigger sequence…
+[2026-09-01 23:33:33] [DEBUG] Key 'Q' press 1/4
+[2026-09-01 23:33:33] [DEBUG] Key 'Q' press 2/4
+[2026-09-01 23:33:34] [DEBUG] Key 'Q' press 3/4
+[2026-09-01 23:33:34] [DEBUG] Key 'Q' press 4/4
+[2026-09-01 23:33:34] [INFO] Quit sequence detected (Q x4) — shutting down.
+[2026-09-01 23:33:34] [DEBUG] Key 'Q' press 1/4
+[2026-09-01 23:33:34] [INFO] Daemon stopped.

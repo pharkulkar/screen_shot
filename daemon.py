@@ -248,19 +248,45 @@ def main():
         f"Config: trigger='{cfg['hotkey_char']}' "
         f"x{cfg['press_count']} within {cfg['max_interval_ms']}ms"
     )
+    log.info(f"Quit:   'Q' x{cfg['press_count']} within {cfg['max_interval_ms']}ms")
     log.info(f"Output: {(ROOT / cfg['output_dir']).resolve()}")
     log.info(f"PID: {os.getpid()} | Python {sys.version.split()[0]} | {PLATFORM}")
+
+    # Event set by the quit sequence; causes the listener loop to exit cleanly.
+    stop_event = threading.Event()
 
     def on_trigger():
         take_screenshot(cfg["output_dir"], log)
 
-    detector = SequenceDetector(
+    def on_quit():
+        log.info("Quit sequence detected (Q x4) — shutting down.")
+        remove_pidfile()
+        stop_event.set()
+
+    # Screenshot detector — configured hotkey (default C x4)
+    screenshot_detector = SequenceDetector(
         char=cfg["hotkey_char"],
         press_count=cfg["press_count"],
         max_interval_ms=cfg["max_interval_ms"],
         on_trigger=on_trigger,
         log=log,
     )
+
+    # Quit detector — always Q x4, same timing window
+    quit_detector = SequenceDetector(
+        char="Q",
+        press_count=cfg["press_count"],
+        max_interval_ms=cfg["max_interval_ms"],
+        on_trigger=on_quit,
+        log=log,
+    )
+
+    def on_key(key):
+        screenshot_detector.handle(key)
+        quit_detector.handle(key)
+        # Return False to stop the listener once stop_event is set.
+        if stop_event.is_set():
+            return False
 
     def shutdown(signum, frame):
         log.info(f"Signal {signum} — shutting down.")
@@ -273,7 +299,7 @@ def main():
     log.info("Global key listener active. Waiting for trigger sequence…")
 
     try:
-        with keyboard.Listener(on_press=detector.handle) as listener:
+        with keyboard.Listener(on_press=on_key) as listener:
             listener.join()
     except SystemExit:
         pass
