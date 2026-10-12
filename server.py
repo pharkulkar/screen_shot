@@ -4,38 +4,17 @@ screenshot-viewer server
 ========================
 Serves a lightweight web gallery of all captured screenshots on:
 
-    http://localhost:5000
-
-Organised by date, newest first. Click any thumbnail to view full-size.
-No external CSS/JS frameworks — plain HTML + inline styles so it works
-completely offline.
-
-Usage:
-    python3 server.py              # starts on port 5000
-    python3 server.py --port 8080  # custom port
-    pythonw server.py              # Windows: no console window
-"""
-#!/usr/bin/env python3
-"""
-screenshot-viewer server
-========================
-Serves a lightweight web gallery of all captured screenshots on:
-
-    http://localhost:5000
-
-Organised by date, newest first. Includes interactive hover actions:
-Solution (OCR), Edit, and Delete.
-"""
-#!/usr/bin/env python3
-"""
-screenshot-viewer server
-========================
-Serves a lightweight web gallery of all captured screenshots on:
-
-    http://localhost:5000
+    http://localhost:3000
 
 Organised by date, newest first. Includes interactive hover actions:
 Solution (OCR), Edit (Crop/Draw with Save/Save As), and Delete.
+Also serves the `/typings` live overlay page over Server-Sent Events.
+No external CSS/JS frameworks — plain HTML + inline styles, works offline.
+
+Usage:
+    python3 server.py              # starts on port 3000 (default)
+    python3 server.py --port 8080  # custom port
+    pythonw server.py              # Windows: no console window
 """
 
 import argparse
@@ -50,6 +29,42 @@ import sys
 import threading
 from datetime import datetime
 from pathlib import Path
+
+# ── Load environment variables from .env (if present) ─────────────────────────
+# Keeps secrets like OPENAI_API_KEY out of source. Safe no-op if python-dotenv
+# isn't installed or no .env exists.
+try:
+    from dotenv import load_dotenv
+    load_dotenv(Path(__file__).resolve().parent / ".env")
+except ImportError:
+    pass
+
+# OpenAI key is read server-side only (never exposed to the overlay).
+# It is loaded here so later phases can use it; absence is tolerated for now.
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
+
+# OpenAI helper (ask / ask_stream). Imported defensively so the server still
+# boots for gallery/OCR even if the module or SDK has an issue.
+try:
+    import ai as ai_helper
+except Exception:  # noqa: BLE001
+    ai_helper = None
+
+# Data layer (SQLite records + caching) and unified OCR, imported defensively.
+try:
+    import db as db_layer
+except Exception:  # noqa: BLE001
+    db_layer = None
+
+try:
+    import ocr_engine
+except Exception:  # noqa: BLE001
+    ocr_engine = None
+
+try:
+    import conversation as convo
+except Exception:  # noqa: BLE001
+    convo = None
 
 from flask import (Flask, Response, abort, jsonify, render_template_string,
                    request, send_file)
@@ -68,6 +83,15 @@ from PIL import Image
 # 'en' for English. Set gpu=False if you don't have CUDA set up.
 reader = easyocr.Reader(['en'], gpu=False)
 
+# Share the already-loaded easyocr reader with the unified OCR layer so the
+# "easyocr" engine path doesn't build a second reader.
+if ocr_engine is not None:
+    ocr_engine.set_easyocr_reader(reader)
+
+# Initialize the SQLite data layer (records + answer caching).
+if db_layer is not None:
+    db_layer.init_db()
+
 # ── Resolve project root ──────────────────────────────────────────────────────
 ROOT = Path(__file__).resolve().parent
 
@@ -84,6 +108,14 @@ SHOTS_DIR  = ROOT / CFG.get("outputDir", "./screenshots")
 
 # ── Flask app ─────────────────────────────────────────────────────────────────
 app = Flask(__name__)
+
+# WebSocket support (live audio in / transcript out, Phase 5). Optional so the
+# server still runs if flask-sock isn't installed.
+try:
+    from flask_sock import Sock
+    sock = Sock(app)
+except Exception:  # noqa: BLE001
+    sock = None
 
 log = logging.getLogger("werkzeug")
 log.setLevel(logging.ERROR)
@@ -1061,6 +1093,598 @@ def api_ocr():
 
     except Exception as e:
         return jsonify({"success": False, "error": f"OCR Error: {str(e)}"}), 500
+
+@app.route("/api/health")
+def api_health():
+    """Lightweight status probe (used by the overlay to show readiness)."""
+    return jsonify({
+        "success": True,
+        "openai_configured": bool(ai_helper and ai_helper.is_configured()),
+        "chat_model": getattr(ai_helper, "CHAT_MODEL", None) if ai_helper else None,
+    })
+
+@app.route("/api/ask", methods=["POST"])
+def api_ask():
+    """
+    Text -> OpenAI -> answer.
+
+    Request JSON:
+        { "text": "<text to answer>",
+          "stream": false,              # optional; true => SSE stream
+          "system_prompt": "<override>" # optional
+        }
+
+    Non-streaming response: { "success": true, "answer": "..." }
+    Streaming response (stream=true): text/event-stream of
+        event: delta  data: {"text": "<chunk>"}
+        ...
+        event: done   data: {"answer": "<full answer>"}
+      or on failure:
+        event: error  data: {"error": "<message>"}
+    """
+    if ai_helper is None:
+        return jsonify({
+            "success": False,
+            "error": "AI helper unavailable. Check the 'openai' install.",
+        }), 503
+
+    data = request.get_json(silent=True) or {}
+    text = (data.get("text") or "").strip()
+    want_stream = bool(data.get("stream"))
+    system_prompt = data.get("system_prompt")
+    tone = data.get("tone")
+    record_id = data.get("record_id")  # optional: persist answer onto a record
+
+    if not text:
+        return jsonify({"success": False, "error": "Missing 'text'."}), 400
+
+    # ── Streaming (SSE) ────────────────────────────────────────────────────
+    if want_stream:
+        def generate():
+            collected = []
+            try:
+                for piece in ai_helper.ask_stream(text, system_prompt=system_prompt, tone=tone):
+                    collected.append(piece)
+                    yield f"event: delta\ndata: {json.dumps({'text': piece})}\n\n"
+                full = "".join(collected).strip()
+                yield f"event: done\ndata: {json.dumps({'answer': full})}\n\n"
+            except ai_helper.AIError as e:
+                yield f"event: error\ndata: {json.dumps({'error': str(e)})}\n\n"
+            except Exception as e:  # noqa: BLE001
+                yield f"event: error\ndata: {json.dumps({'error': f'Unexpected error: {e}'})}\n\n"
+
+        return Response(
+            generate(),
+            mimetype="text/event-stream",
+            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        )
+
+    # ── Non-streaming (JSON) ───────────────────────────────────────────────
+    try:
+        answer = ai_helper.ask(text, system_prompt=system_prompt, tone=tone)
+    except ai_helper.AIError as e:
+        # Config problems (missing key) vs. upstream API problems both map to
+        # a clean 502-ish failure; 400 would wrongly imply a bad client request.
+        if record_id and db_layer is not None:
+            db_layer.update_record(record_id, status="error")
+        return jsonify({"success": False, "error": str(e)}), 502
+    except Exception as e:  # noqa: BLE001
+        return jsonify({"success": False, "error": f"Unexpected error: {e}"}), 500
+
+    # Persist the (possibly user-edited) text + answer so it shows in the
+    # gallery and is cached. Three cases:
+    #   - record_id given + exists -> update latest + append history
+    #   - record_id given but missing / none -> create a 'manual' record
+    #   - no record_id -> create a 'manual' record (typed question, no capture)
+    if db_layer is not None:
+        rec = db_layer.get_record(record_id) if record_id else None
+        if rec is None:
+            rec = db_layer.create_record(
+                source_type="manual", input_ref=None,
+                extracted_text=text, status="captured",
+            )
+        rid = rec["id"]
+        db_layer.update_record(rid, extracted_text=text, answer=answer, status="answered")
+        db_layer.add_history(rid, text, answer)
+        return jsonify({"success": True, "answer": answer, "record_id": rid})
+    return jsonify({"success": True, "answer": answer})
+
+# ── Records (SQLite) + caching (Feature C) ─────────────────────────────────────
+
+def _require_db():
+    if db_layer is None:
+        return jsonify({"success": False, "error": "Data layer unavailable."}), 503
+    return None
+
+@app.route("/api/records")
+def api_records():
+    """List records (newest first) for the gallery."""
+    err = _require_db()
+    if err:
+        return err
+    try:
+        limit = int(request.args.get("limit", 500))
+        offset = int(request.args.get("offset", 0))
+    except ValueError:
+        limit, offset = 500, 0
+    return jsonify({"success": True, "records": db_layer.list_records(limit, offset)})
+
+@app.route("/api/records/<record_id>")
+def api_record_get(record_id: str):
+    """Fetch one record. This is the cache read: returns the stored answer."""
+    err = _require_db()
+    if err:
+        return err
+    rec = db_layer.get_record(record_id)
+    if not rec:
+        return jsonify({"success": False, "error": "Record not found."}), 404
+    return jsonify({
+        "success": True,
+        "record": rec,
+        "cached": db_layer.has_answer(record_id),
+        "history": db_layer.get_history(record_id),  # newest-first
+    })
+
+@app.route("/api/records/<record_id>", methods=["DELETE"])
+def api_record_delete(record_id: str):
+    """Delete a record and its on-disk image (if any)."""
+    err = _require_db()
+    if err:
+        return err
+    rec = db_layer.get_record(record_id)
+    if not rec:
+        return jsonify({"success": False, "error": "Record not found."}), 404
+    # Remove the backing image file if it is a screenshot path under SHOTS_DIR.
+    ref = rec.get("input_ref")
+    if ref and rec.get("source_type", "").startswith("screenshot"):
+        try:
+            p = Path(ref)
+            if not p.is_absolute():
+                p = ROOT / ref
+            p = p.resolve()
+            if str(p).startswith(str(SHOTS_DIR.resolve())) and p.exists():
+                p.unlink()
+        except Exception:  # noqa: BLE001 — image cleanup is best-effort
+            pass
+    db_layer.delete_record(record_id)
+    return jsonify({"success": True})
+
+@app.route("/api/records/clear", methods=["POST"])
+def api_records_clear():
+    """Manual 'clear history' (retention). Deletes all records (not images)."""
+    err = _require_db()
+    if err:
+        return err
+    removed = db_layer.clear_all()
+    return jsonify({"success": True, "removed": removed})
+
+def _record_image_path(record_id: str) -> Path | None:
+    """Resolve a record's backing image to an absolute, existing path."""
+    if db_layer is None:
+        return None
+    rec = db_layer.get_record(record_id)
+    if not rec:
+        return None
+    ref = rec.get("input_ref")
+    if not ref:
+        return None
+    p = Path(ref)
+    if not p.is_absolute():
+        p = ROOT / ref
+    p = p.resolve()
+    # Only serve images that live under the screenshots dir (safety).
+    if not str(p).startswith(str(SHOTS_DIR.resolve())):
+        return None
+    return p if p.exists() else None
+
+@app.route("/api/records/<record_id>/image")
+def api_record_image(record_id: str):
+    """Serve a record's full image (gallery lightbox / answer preview)."""
+    p = _record_image_path(record_id)
+    if p is None:
+        abort(404)
+    return send_file(p, mimetype="image/png")
+
+@app.route("/api/records/<record_id>/thumb")
+def api_record_thumb(record_id: str):
+    """Serve a downscaled thumbnail of a record's image for the gallery grid."""
+    p = _record_image_path(record_id)
+    if p is None:
+        abort(404)
+    try:
+        if Image:
+            with Image.open(p) as img:
+                img.thumbnail((440, 280))
+                buf = io.BytesIO()
+                img.save(buf, format="PNG", optimize=True)
+                buf.seek(0)
+                return send_file(buf, mimetype="image/png")
+    except Exception:  # noqa: BLE001 — fall back to full image
+        pass
+    return send_file(p, mimetype="image/png")
+
+# ── Solve: image -> OCR -> OpenAI -> answer (Feature A), cache-aware ────────────
+
+def _resolve_image_for_record(rec: dict) -> Path | None:
+    """Return an absolute, existing path to a record's backing image, or None."""
+    ref = rec.get("input_ref")
+    if not ref:
+        return None
+    p = Path(ref)
+    if not p.is_absolute():
+        p = ROOT / ref
+    p = p.resolve()
+    return p if p.exists() else None
+
+def _save_inline_capture(image_data: str, source_type: str):
+    """Decode an inline base64 image, save it under screenshots/<date>/, and
+    create a 'captured' record. Returns (record, img_path) or (None, error_str)."""
+    try:
+        _, encoded = image_data.split(",", 1) if "," in image_data else ("", image_data)
+        raw = base64.b64decode(encoded)
+    except Exception as e:  # noqa: BLE001
+        return None, f"Bad image data: {e}"
+    date = datetime.now().strftime("%Y-%m-%d")
+    filename = f"capture-{datetime.now().strftime('%Y-%m-%dT%H-%M-%S-%f')}.png"
+    day_dir = (SHOTS_DIR / date)
+    day_dir.mkdir(parents=True, exist_ok=True)
+    img_path = (day_dir / filename).resolve()
+    try:
+        with open(img_path, "wb") as f:
+            f.write(raw)
+    except Exception as e:  # noqa: BLE001
+        return None, f"Could not save image: {e}"
+    rel_ref = str(img_path.relative_to(ROOT)) if str(img_path).startswith(str(ROOT)) else str(img_path)
+    rec = db_layer.create_record(source_type=source_type, input_ref=rel_ref, status="captured")
+    return rec, img_path
+
+@app.route("/api/ocr-only", methods=["POST"])
+def api_ocr_only():
+    """
+    Image -> OCR text ONLY (no OpenAI). Creates a 'captured' record so the user
+    can review/edit the extracted text, then call /api/ask to get an answer.
+
+    Request JSON:
+      { "image": "data:image/png;base64,....",
+        "source_type": "screenshot-region"|"screenshot-full",
+        "engine": "paddle|easyocr" }
+
+    Returns: { success, record_id, extracted_text }
+    """
+    if ocr_engine is None or db_layer is None:
+        return jsonify({"success": False, "error": "OCR/data layer unavailable."}), 503
+
+    data = request.get_json(silent=True) or {}
+    image_data = data.get("image")
+    engine = data.get("engine")
+    source_type = data.get("source_type", "screenshot-region")
+    if not image_data:
+        return jsonify({"success": False, "error": "Missing 'image'."}), 400
+
+    rec, maybe_err = _save_inline_capture(image_data, source_type)
+    if rec is None:
+        return jsonify({"success": False, "error": maybe_err}), 400
+    img_path = maybe_err  # on success, second value is the path
+
+    try:
+        extracted = ocr_engine.extract_text(str(img_path), engine=engine)
+    except ocr_engine.OCRError as e:
+        db_layer.update_record(rec["id"], status="error")
+        return jsonify({"success": False, "error": str(e), "record_id": rec["id"]}), 502
+
+    db_layer.update_record(rec["id"], extracted_text=extracted or "")
+    return jsonify({
+        "success": True,
+        "record_id": rec["id"],
+        "extracted_text": extracted or "",
+    })
+
+@app.route("/api/solve", methods=["POST"])
+def api_solve():
+    """
+    Image -> OCR -> OpenAI -> answer, stored on a record (cache-aware).
+
+    Request JSON (one of):
+      { "record_id": "<id>", "force": false, "engine": "paddle|easyocr" }
+      { "image": "data:image/png;base64,....",
+        "source_type": "screenshot-region",  # or screenshot-full
+        "date": "YYYY-MM-DD", "filename": "foo.png",   # optional: persist image
+        "engine": "paddle|easyocr" }
+
+    Behavior:
+      - If record_id has an answer and force is not set -> cache hit, returned
+        immediately (NO OCR, NO OpenAI).
+      - Otherwise: OCR the image, call OpenAI, store answer on the record,
+        return it.
+    """
+    if ai_helper is None:
+        return jsonify({"success": False, "error": "AI helper unavailable."}), 503
+    if ocr_engine is None or db_layer is None:
+        return jsonify({"success": False, "error": "OCR/data layer unavailable."}), 503
+
+    data = request.get_json(silent=True) or {}
+    engine = data.get("engine")
+    force = bool(data.get("force"))
+    tone = data.get("tone")
+
+    # ── Resolve the target record + image ──────────────────────────────────
+    record_id = data.get("record_id")
+    image_data = data.get("image")
+
+    if record_id:
+        rec = db_layer.get_record(record_id)
+        if not rec:
+            return jsonify({"success": False, "error": "Record not found."}), 404
+
+        # Cache hit: already answered and not forced -> no reprocessing.
+        if not force and db_layer.has_answer(record_id):
+            return jsonify({
+                "success": True, "cached": True,
+                "answer": rec["answer"], "record": rec,
+            })
+
+        img_path = _resolve_image_for_record(rec)
+        if img_path is None:
+            return jsonify({"success": False, "error": "Record image missing."}), 404
+
+    elif image_data:
+        # New capture sent inline. Optionally persist to the screenshots tree.
+        source_type = data.get("source_type", "screenshot-region")
+        try:
+            _, encoded = image_data.split(",", 1) if "," in image_data else ("", image_data)
+            raw = base64.b64decode(encoded)
+        except Exception as e:  # noqa: BLE001
+            return jsonify({"success": False, "error": f"Bad image data: {e}"}), 400
+
+        date = data.get("date") or datetime.now().strftime("%Y-%m-%d")
+        filename = data.get("filename") or f"capture-{datetime.now().strftime('%Y-%m-%dT%H-%M-%S-%f')}.png"
+        day_dir = (SHOTS_DIR / date)
+        day_dir.mkdir(parents=True, exist_ok=True)
+        img_path = (day_dir / filename).resolve()
+        try:
+            with open(img_path, "wb") as f:
+                f.write(raw)
+        except Exception as e:  # noqa: BLE001
+            return jsonify({"success": False, "error": f"Could not save image: {e}"}), 500
+
+        rel_ref = str(img_path.relative_to(ROOT)) if str(img_path).startswith(str(ROOT)) else str(img_path)
+        rec = db_layer.create_record(source_type=source_type, input_ref=rel_ref, status="processing")
+    else:
+        return jsonify({"success": False, "error": "Provide 'record_id' or 'image'."}), 400
+
+    # ── OCR -> OpenAI ──────────────────────────────────────────────────────
+    db_layer.update_record(rec["id"], status="processing")
+    try:
+        extracted = ocr_engine.extract_text(str(img_path), engine=engine)
+    except ocr_engine.OCRError as e:
+        db_layer.update_record(rec["id"], status="error")
+        return jsonify({"success": False, "error": str(e), "record_id": rec["id"]}), 502
+
+    if not extracted:
+        db_layer.update_record(rec["id"], status="error", extracted_text="")
+        return jsonify({"success": False, "error": "No text detected in image.", "record_id": rec["id"]}), 422
+
+    db_layer.update_record(rec["id"], extracted_text=extracted)
+
+    try:
+        answer = ai_helper.ask(extracted, tone=tone)
+    except ai_helper.AIError as e:
+        db_layer.update_record(rec["id"], status="error")
+        return jsonify({"success": False, "error": str(e), "record_id": rec["id"]}), 502
+    except Exception as e:  # noqa: BLE001
+        db_layer.update_record(rec["id"], status="error")
+        return jsonify({"success": False, "error": f"Unexpected error: {e}", "record_id": rec["id"]}), 500
+
+    updated = db_layer.update_record(rec["id"], answer=answer, status="answered")
+    return jsonify({
+        "success": True, "cached": False,
+        "answer": answer, "extracted_text": extracted, "record": updated,
+    })
+
+# ── Live transcription (WebSocket) — Phase 5 ──────────────────────────────────
+
+@app.route("/api/transcript")
+def api_transcript():
+    """Return the current rolling transcript (in-memory only; OQ-3)."""
+    if convo is None:
+        return jsonify({"success": False, "error": "Conversation buffer unavailable."}), 503
+    return jsonify({"success": True, "turns": convo.get_turns()})
+
+@app.route("/api/transcript/clear", methods=["POST"])
+def api_transcript_clear():
+    if convo is None:
+        return jsonify({"success": False, "error": "Conversation buffer unavailable."}), 503
+    convo.clear()
+    return jsonify({"success": True})
+
+def _generate_suggestions(tone=None, dialogue=None):
+    """Shared helper: build suggestions from provided dialogue or the buffer.
+    Returns (suggestions_list, error_str)."""
+    if ai_helper is None:
+        return None, "AI helper unavailable."
+    if dialogue is None:
+        if convo is None:
+            return None, "Conversation buffer unavailable."
+        # Cost control: only send the last N turns to the LLM.
+        ctx_turns = int(os.environ.get("SUGGEST_CONTEXT_TURNS", "16"))
+        dialogue = convo.as_dialogue(limit=ctx_turns)
+    if not (dialogue or "").strip():
+        return [], None
+    try:
+        return ai_helper.suggest(dialogue, tone=tone), None
+    except ai_helper.AIError as e:
+        return None, str(e)
+    except Exception as e:  # noqa: BLE001
+        return None, f"Suggestion failed: {e}"
+
+@app.route("/api/transcript/save", methods=["POST"])
+def api_transcript_save():
+    """
+    OPT-IN only: write the current rolling transcript to a text file on disk.
+
+    Per OQ-3, the transcript is in-memory by default; this endpoint only runs
+    when the user explicitly chooses "save transcript". Returns the file path.
+    """
+    if convo is None:
+        return jsonify({"success": False, "error": "Conversation buffer unavailable."}), 503
+    text = convo.as_dialogue()
+    if not text.strip():
+        return jsonify({"success": False, "error": "Nothing to save."}), 400
+    out_dir = ROOT / "transcripts"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    fname = f"transcript-{datetime.now().strftime('%Y-%m-%dT%H-%M-%S')}.txt"
+    path = out_dir / fname
+    try:
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(text + "\n")
+    except Exception as e:  # noqa: BLE001
+        return jsonify({"success": False, "error": f"Could not save: {e}"}), 500
+    return jsonify({"success": True, "path": str(path), "filename": fname})
+
+@app.route("/api/suggest", methods=["POST"])
+def api_suggest():
+    """
+    Generate 1-3 reply suggestions ("what should I say").
+
+    Request JSON (all optional):
+      { "tone": "concise|...", "dialogue": "<override text>" }
+    Without `dialogue`, uses the current rolling transcript buffer.
+    """
+    data = request.get_json(silent=True) or {}
+    tone = data.get("tone")
+    dialogue = data.get("dialogue")  # None -> use buffer
+    suggestions, err = _generate_suggestions(tone=tone, dialogue=dialogue)
+    if err:
+        return jsonify({"success": False, "error": err}), 502
+    return jsonify({"success": True, "suggestions": suggestions})
+
+# Auto-suggest tuning (seconds). After "Them" speaks, wait for this much
+# silence before auto-generating suggestions; throttle limits frequency/cost.
+AUTO_SUGGEST_SILENCE_S = float(os.environ.get("AUTO_SUGGEST_SILENCE_S", "2.5"))
+AUTO_SUGGEST_THROTTLE_S = float(os.environ.get("AUTO_SUGGEST_THROTTLE_S", "12"))
+
+if sock is not None:
+    @sock.route("/ws/audio")
+    def ws_audio(ws):
+        """
+        Live audio-in / transcript-out + suggestions channel.
+
+        Client -> server:
+            { "speaker": "me"|"them", "audio": "data:...;base64,..",
+              "filename": "me.webm",
+              "auto_suggest": true, "tone": "concise" }   # auto flags optional
+            { "type": "suggest_now", "tone": "concise" }   # on-demand request
+
+        Server -> client:
+            { "type": "transcript", "speaker, text }
+            { "type": "suggestions", "suggestions": [...], "trigger": "auto|manual" }
+            { "type": "error", "error": "..." }
+        """
+        send_lock = threading.Lock()
+
+        def safe_send(obj):
+            try:
+                with send_lock:
+                    ws.send(json.dumps(obj))
+            except Exception:  # noqa: BLE001 — connection likely closed
+                pass
+
+        # Shared state for the silence-watcher thread.
+        st = {
+            "last_them_ts": 0.0,
+            "last_suggest_ts": 0.0,
+            "auto": False,
+            "tone": None,
+            "alive": True,
+            "pending": False,  # a Them turn is awaiting a silence window
+        }
+
+        def watcher():
+            while st["alive"]:
+                time.sleep(0.4)
+                if not (st["auto"] and st["pending"]):
+                    continue
+                now = time.time()
+                if now - st["last_them_ts"] < AUTO_SUGGEST_SILENCE_S:
+                    continue  # still "talking" (recent Them turn)
+                if now - st["last_suggest_ts"] < AUTO_SUGGEST_THROTTLE_S:
+                    st["pending"] = False
+                    continue  # throttled
+                st["pending"] = False
+                st["last_suggest_ts"] = now
+                suggestions, err = _generate_suggestions(tone=st["tone"])
+                if err:
+                    safe_send({"type": "error", "error": err})
+                elif suggestions:
+                    safe_send({"type": "suggestions", "suggestions": suggestions, "trigger": "auto"})
+
+        threading.Thread(target=watcher, daemon=True).start()
+
+        try:
+            while True:
+                raw = ws.receive()
+                if raw is None:
+                    break  # client disconnected
+                try:
+                    msg = json.loads(raw)
+                except (ValueError, TypeError):
+                    safe_send({"type": "error", "error": "Invalid message."})
+                    continue
+
+                # On-demand suggestion request.
+                if msg.get("type") == "suggest_now":
+                    st["last_suggest_ts"] = time.time()
+                    suggestions, err = _generate_suggestions(tone=msg.get("tone"))
+                    if err:
+                        safe_send({"type": "error", "error": err})
+                    else:
+                        safe_send({"type": "suggestions", "suggestions": suggestions or [], "trigger": "manual"})
+                    continue
+
+                # Otherwise it's an audio chunk.
+                st["auto"] = bool(msg.get("auto_suggest"))
+                if msg.get("tone"):
+                    st["tone"] = msg.get("tone")
+
+                speaker = (msg.get("speaker") or "them").lower()
+                audio_field = msg.get("audio") or ""
+                filename = msg.get("filename") or f"{speaker}.webm"
+                if not audio_field:
+                    continue
+
+                try:
+                    b64 = audio_field.split(",", 1)[1] if "," in audio_field else audio_field
+                    audio_bytes = base64.b64decode(b64)
+                except Exception:  # noqa: BLE001
+                    safe_send({"type": "error", "error": "Bad audio data."})
+                    continue
+
+                if ai_helper is None:
+                    safe_send({"type": "error", "error": "AI helper unavailable."})
+                    continue
+
+                try:
+                    text = ai_helper.transcribe(audio_bytes, filename=filename)
+                except ai_helper.AIError as e:
+                    safe_send({"type": "error", "error": str(e)})
+                    continue
+                except Exception as e:  # noqa: BLE001
+                    safe_send({"type": "error", "error": f"Transcription failed: {e}"})
+                    continue
+
+                if not text:
+                    continue  # silence / nothing recognized
+
+                if convo is not None:
+                    convo.add_turn(speaker, text)
+                safe_send({"type": "transcript", "speaker": speaker, "text": text})
+
+                # Arm auto-suggest when the OTHER person just spoke.
+                if speaker == "them":
+                    st["last_them_ts"] = time.time()
+                    st["pending"] = True
+        finally:
+            st["alive"] = False
 
 @app.route("/api/save-edit", methods=["POST"])
 def api_save_edit():

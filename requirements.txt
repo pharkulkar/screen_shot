@@ -1,17 +1,37 @@
-# silent-screenshot-daemon + viewer dependencies
+# silent-screenshot-daemon + viewer + copilot dependencies
 # Install with: pip3 install -r requirements.txt
 
-# Global keyboard listener (all platforms)
+# ── Daemon: global keyboard listener (all platforms) ──────────────────────────
 pynput==1.8.2
 
-# Web gallery server
+# ── Web gallery / API server ──────────────────────────────────────────────────
 flask==3.0.3
 
-# Screenshot capture — works on macOS, Windows, Linux without subprocess/permissions
-# macOS: captures live compositor frame directly (no Screen Recording permission needed)
+# WebSocket channel for live audio in / transcript out (Phase 5).
+flask-sock==0.7.0
+
+# ── Screenshot capture ────────────────────────────────────────────────────────
+# macOS: captures live compositor frame directly (no Screen Recording prompt)
 # Windows: supplements Pillow ImageGrab for multi-monitor support
 # Linux: works on X11; Wayland requires XCB
 mss==9.0.2
 
 # Pillow: thumbnail generation for web gallery + Windows fallback capture
 Pillow==11.3.0
+
+# ── OCR ───────────────────────────────────────────────────────────────────────
+# Used by server.py today (baseline OCR engine).
+easyocr==1.7.2
+numpy==1.26.4
+
+# PaddleOCR: SmartQuestionOCR (OCR.py) — preferred engine for question/option
+# content. Heavy (pulls PaddlePaddle); see phases.md PK-7 re: app size.
+paddleocr==2.7.3
+opencv-python==4.10.0.84
+
+# ── OpenAI integration (added Phase 1) ────────────────────────────────────────
+openai==1.51.0
+
+# ── Config / secrets ──────────────────────────────────────────────────────────
+# Loads OPENAI_API_KEY (and other config) from a local .env file.
+python-dotenv==1.0.1
