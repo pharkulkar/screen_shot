@@ -27,6 +27,7 @@ import queue
 import re
 import sys
 import threading
+import time
 from datetime import datetime
 from pathlib import Path
 
@@ -75,18 +76,28 @@ try:
 except ImportError:
     Image = None
 
-import easyocr
 import numpy as np
 from PIL import Image
 
-# Initialize reader once globally at startup (loads weights into memory)
-# 'en' for English. Set gpu=False if you don't have CUDA set up.
-reader = easyocr.Reader(['en'], gpu=False)
+# easyocr pulls in torch, which can be heavy or (on some locked-down Windows
+# machines) blocked by Application Control policy. The default engine is
+# "paddle" (see ocr_engine.py), so we only build the easyocr Reader when it's
+# actually needed, and never let an easyocr/torch failure take down the server.
+reader = None
+try:
+    import easyocr
+    # 'en' for English. Set gpu=False if you don't have CUDA set up.
+    reader = easyocr.Reader(['en'], gpu=False)
 
-# Share the already-loaded easyocr reader with the unified OCR layer so the
-# "easyocr" engine path doesn't build a second reader.
-if ocr_engine is not None:
-    ocr_engine.set_easyocr_reader(reader)
+    # Share the already-loaded easyocr reader with the unified OCR layer so the
+    # "easyocr" engine path doesn't build a second reader.
+    if ocr_engine is not None:
+        ocr_engine.set_easyocr_reader(reader)
+except Exception as exc:  # noqa: BLE001
+    logging.getLogger(__name__).warning(
+        "easyocr unavailable (%s); 'easyocr' engine disabled, "
+        "'paddle' engine still works.", exc
+    )
 
 # Initialize the SQLite data layer (records + answer caching).
 if db_layer is not None:
@@ -1073,6 +1084,13 @@ def api_ocr():
         return jsonify({"success": False, "error": "Missing params"}), 400
 
     path = safe_path(date, filename)
+
+    if reader is None:
+        return jsonify({
+            "success": False,
+            "error": "easyocr engine unavailable (torch not loaded). "
+                     "Use the paddle engine via /api/extract instead.",
+        }), 503
 
     try:
         # Load image with PIL and convert to RGB numpy array for clean channel handling

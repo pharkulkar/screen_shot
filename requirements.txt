@@ -26,11 +26,15 @@ numpy==1.26.4
 
 # PaddleOCR: SmartQuestionOCR (OCR.py) — preferred engine for question/option
 # content. Heavy (pulls PaddlePaddle); see phases.md PK-7 re: app size.
-paddleocr==2.7.3
-opencv-python==4.10.0.84
+# OCR.py uses the 3.x API (use_doc_orientation_classify), so 2.7.3 was wrong
+# anyway. 3.x pulls in a compatible OpenCV itself, so opencv is not pinned here.
+paddleocr==3.2.0
+paddlepaddle==3.2.0
 
 # ── OpenAI integration (added Phase 1) ────────────────────────────────────────
-openai==1.51.0
+# 1.51.0 passed proxies= into httpx, which httpx>=0.28 (pulled in by paddleocr
+# 3.2.0) rejects. 1.68.2 is compatible with httpx 0.28.
+openai==1.68.2
 
 # ── Config / secrets ──────────────────────────────────────────────────────────
 # Loads OPENAI_API_KEY (and other config) from a local .env file.
