@@ -81,6 +81,53 @@ COACH_SYSTEM_PROMPT = (
 )
 
 
+# ── Interview answer prompts (automatic question answering) ────────────────────
+# One base prompt + per-category guidance. Reused by answer_interview_question()
+# below, which routes to the existing ask()/ask_stream() plumbing.
+
+INTERVIEW_BASE_PROMPT = (
+    "You are assisting a candidate in a live technical interview. You are given "
+    "the interviewer's question and (optionally) recent conversation context and "
+    "the candidate's profile. Produce an answer the candidate can speak.\n"
+    "Rules:\n"
+    "- Lead with a direct answer, then a short explanation, then a practical "
+    "example when it helps, then important caveats or trade-offs when relevant.\n"
+    "- Be concise, natural, and technically accurate.\n"
+    "- NEVER invent resume details, work history, benchmarks, or facts you are "
+    "not given. If context is insufficient, say so briefly rather than "
+    "fabricating.\n"
+)
+
+INTERVIEW_CATEGORY_PROMPTS = {
+    "technical": (
+        "This is a technical concept question. Explain clearly with correct "
+        "terminology; include a small concrete example and one common pitfall."
+    ),
+    "coding": (
+        "This is a coding question. Provide: (1) a brief approach, (2) a correct "
+        "solution in a clearly fenced code block, (3) time/space complexity, and "
+        "(4) key edge cases. Prefer the language implied by the question, else "
+        "Python."
+    ),
+    "behavioral": (
+        "This is a behavioral question. Structure the answer using STAR "
+        "(Situation, Task, Action, Result). Use ONLY candidate details provided "
+        "in context; do NOT invent experiences. If no relevant experience is "
+        "provided, give a STAR-shaped template the candidate can fill in and say "
+        "so."
+    ),
+    "system_design": (
+        "This is a system-design question. Cover requirements/assumptions, a "
+        "high-level architecture, key components, data flow, scaling and "
+        "bottlenecks, and trade-offs. Keep it structured and concise."
+    ),
+    "general": (
+        "Answer directly and concisely. If the question is ambiguous, state the "
+        "most likely intent in one line, then answer."
+    ),
+}
+
+
 class AIError(Exception):
     """Raised for any OpenAI-related failure, with a user-safe message."""
 
@@ -288,6 +335,120 @@ def suggest(dialogue: str, tone: str | None = None, model: str | None = None) ->
         )
         content = (resp.choices[0].message.content or "").strip()
         return _parse_suggestions(content)
+    except AIError:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        raise _wrap_openai_errors(exc)
+
+
+# ── Interview answer generation (automatic question answering) ─────────────────
+
+# Human-readable names for the language codes we support. English is default.
+# Extend this map as more languages are added to the detection/answer pipeline.
+LANGUAGE_NAMES = {
+    "en": "English",
+}
+DEFAULT_ANSWER_LANGUAGE = os.environ.get("INTERVIEW_DEFAULT_LANGUAGE", "en").split("-")[0].lower()
+
+
+def _language_instruction(language: str | None) -> str:
+    """Return a one-line instruction pinning the answer language (English by
+    default). Unknown/empty values fall back to English — we never silently
+    switch to an unsupported language."""
+    code = (language or DEFAULT_ANSWER_LANGUAGE or "en").strip().lower().split("-")[0]
+    name = LANGUAGE_NAMES.get(code, "English")
+    return f"- Always respond in {name}, regardless of the input language."
+
+
+def _build_interview_prompt(category: str | None, language: str | None = None) -> str:
+    """Compose the base interview prompt with category-specific guidance and a
+    language directive (defaults to English)."""
+    cat = (category or "general").lower()
+    guidance = INTERVIEW_CATEGORY_PROMPTS.get(cat, INTERVIEW_CATEGORY_PROMPTS["general"])
+    return (INTERVIEW_BASE_PROMPT + "\n" + guidance
+            + "\n" + _language_instruction(language))
+
+
+def _build_interview_user_content(
+    question: str,
+    context: str | None = None,
+    candidate_profile: str | None = None,
+) -> str:
+    """Assemble the user message: question + optional context/profile blocks."""
+    question = (question or "").strip()
+    if not question:
+        raise AIError("No question provided to answer.")
+    parts = []
+    if candidate_profile and candidate_profile.strip():
+        parts.append("Candidate profile:\n" + candidate_profile.strip())
+    if context and context.strip():
+        parts.append("Recent conversation (for context only):\n" + context.strip())
+    parts.append("Interviewer's question:\n" + question)
+    return "\n\n".join(parts)
+
+
+def answer_interview_question(
+    question: str,
+    category: str | None = None,
+    context: str | None = None,
+    candidate_profile: str | None = None,
+    model: str | None = None,
+    temperature: float | None = None,
+    language: str | None = None,
+) -> str:
+    """
+    Generate a complete interview answer for `question`. Reuses the Chat
+    Completions client. `language` pins the answer language (English by
+    default). Raises AIError on failure.
+    """
+    client = _get_client()
+    system = _build_interview_prompt(category, language)
+    user = _build_interview_user_content(question, context, candidate_profile)
+    kwargs: dict = {"model": model or CHAT_MODEL,
+                    "messages": [{"role": "system", "content": system},
+                                 {"role": "user", "content": user}]}
+    if temperature is not None:
+        kwargs["temperature"] = temperature
+    try:
+        resp = client.chat.completions.create(**kwargs)
+        return (resp.choices[0].message.content or "").strip()
+    except AIError:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        raise _wrap_openai_errors(exc)
+
+
+def answer_interview_question_stream(
+    question: str,
+    category: str | None = None,
+    context: str | None = None,
+    candidate_profile: str | None = None,
+    model: str | None = None,
+    temperature: float | None = None,
+    language: str | None = None,
+):
+    """
+    Stream an interview answer, yielding text chunks. `language` pins the answer
+    language (English by default). Raises AIError on failure.
+    """
+    client = _get_client()
+    system = _build_interview_prompt(category, language)
+    user = _build_interview_user_content(question, context, candidate_profile)
+    kwargs: dict = {"model": model or CHAT_MODEL,
+                    "messages": [{"role": "system", "content": system},
+                                 {"role": "user", "content": user}],
+                    "stream": True}
+    if temperature is not None:
+        kwargs["temperature"] = temperature
+    try:
+        stream = client.chat.completions.create(**kwargs)
+        for chunk in stream:
+            if not chunk.choices:
+                continue
+            delta = chunk.choices[0].delta
+            piece = getattr(delta, "content", None)
+            if piece:
+                yield piece
     except AIError:
         raise
     except Exception as exc:  # noqa: BLE001

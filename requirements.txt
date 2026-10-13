@@ -39,3 +39,8 @@ openai==1.68.2
 # ── Config / secrets ──────────────────────────────────────────────────────────
 # Loads OPENAI_API_KEY (and other config) from a local .env file.
 python-dotenv==1.0.1
+
+# ── Tests (dev only) ──────────────────────────────────────────────────────────
+# Unit + integration tests for the interview auto-detection feature. Not needed
+# at runtime; install with:  pip install pytest
+# pytest==8.3.3

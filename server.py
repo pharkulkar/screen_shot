@@ -103,6 +103,33 @@ except Exception as exc:  # noqa: BLE001
 if db_layer is not None:
     db_layer.init_db()
 
+# ── Interview auto-detection (smart question detection + answering) ───────────
+# Imported defensively so the gallery/OCR server still boots even if a new
+# module has an issue. Builds one shared SessionManager used by the
+# /ws/interview WebSocket and the /api/interview/* REST routes.
+try:
+    import interview_config as _iv_config
+    import question_detector as _iv_detector
+    import interview_session as _iv_session
+
+    _INTERVIEW_CONFIG = _iv_config.load_config()
+    _interview_detector = _iv_detector.QuestionDetector(
+        _INTERVIEW_CONFIG, ai_module=ai_helper
+    )
+    interview_manager = _iv_session.SessionManager(
+        _INTERVIEW_CONFIG,
+        _interview_detector,
+        ai_module=ai_helper,
+        db_module=db_layer,
+    )
+except Exception as _iv_exc:  # noqa: BLE001
+    logging.getLogger(__name__).warning(
+        "interview auto-detection unavailable (%s)", _iv_exc
+    )
+    _INTERVIEW_CONFIG = None
+    _iv_session = None
+    interview_manager = None
+
 # ── Resolve project root ──────────────────────────────────────────────────────
 ROOT = Path(__file__).resolve().parent
 
@@ -1115,10 +1142,28 @@ def api_ocr():
 @app.route("/api/health")
 def api_health():
     """Lightweight status probe (used by the overlay to show readiness)."""
+    languages = None
+    default_language = None
+    default_locale = None
+    if _INTERVIEW_CONFIG is not None:
+        try:
+            import interview_config as _ic
+            languages = [
+                {"code": code, "name": meta.get("name", code),
+                 "locale": meta.get("default_locale")}
+                for code, meta in _ic.SUPPORTED_LANGUAGES.items()
+            ]
+            default_language = _INTERVIEW_CONFIG.language
+            default_locale = _INTERVIEW_CONFIG.defaultSpeechLocale
+        except Exception:  # noqa: BLE001
+            pass
     return jsonify({
         "success": True,
         "openai_configured": bool(ai_helper and ai_helper.is_configured()),
         "chat_model": getattr(ai_helper, "CHAT_MODEL", None) if ai_helper else None,
+        "default_language": default_language,
+        "default_speech_locale": default_locale,
+        "supported_languages": languages,
     })
 
 @app.route("/api/ask", methods=["POST"])
@@ -1703,6 +1748,233 @@ if sock is not None:
                     st["pending"] = True
         finally:
             st["alive"] = False
+
+# ── Interview auto-detection endpoints ────────────────────────────────────────
+# REST for session lifecycle + history + cancel; WebSocket for low-latency
+# transcript-in / event-out. The frontend owns speech-to-text and sends us
+# recognized text (partial/final); we detect questions and auto-answer.
+
+@app.route("/api/interview/start", methods=["POST"])
+def api_interview_start():
+    """
+    Start (or reuse) an interview session. REST sessions buffer events so a
+    later /events poll or the WS can pick them up; most clients should use the
+    WebSocket instead. Returns the session id and effective config.
+
+    Request JSON (all optional):
+      { "session_id": "...", "candidate_profile": "..." }
+    """
+    if interview_manager is None:
+        return jsonify({"success": False, "error": "Interview engine unavailable."}), 503
+    data = request.get_json(silent=True) or {}
+    sid = data.get("session_id")
+    profile = data.get("candidate_profile")
+    language = data.get("language")  # optional; falls back to default English
+
+    buf = _InterviewEventBuffer()
+    session = interview_manager.start_session(
+        emit=buf.push, session_id=sid, candidate_profile=profile,
+        language=language,
+    )
+    _REST_EVENT_BUFFERS[session.id] = buf
+    return jsonify({
+        "success": True,
+        "session_id": session.id,
+        "language": session.language,
+        "speech_locale": session.speech_locale,
+        "config": _INTERVIEW_CONFIG.to_dict() if _INTERVIEW_CONFIG else {},
+    })
+
+
+@app.route("/api/interview/<session_id>/transcript", methods=["POST"])
+def api_interview_transcript(session_id: str):
+    """
+    Submit a transcript segment (partial or final) to a session.
+
+    Request JSON:
+      { "text": "...", "is_final": true|false,
+        "speaker": "them"|"me", "timestamp": <epoch secs, optional> }
+    """
+    if interview_manager is None:
+        return jsonify({"success": False, "error": "Interview engine unavailable."}), 503
+    session = interview_manager.get(session_id)
+    if session is None:
+        return jsonify({"success": False, "error": "Unknown session."}), 404
+    data = request.get_json(silent=True) or {}
+    text = data.get("text") or ""
+    is_final = bool(data.get("is_final", False))
+    speaker = (data.get("speaker") or "them")
+    ts = data.get("timestamp")
+    session.add_transcript(text, is_final=is_final, speaker=speaker, timestamp=ts)
+    return jsonify({"success": True})
+
+
+@app.route("/api/interview/<session_id>/events")
+def api_interview_events(session_id: str):
+    """Drain buffered events for a REST session (long-poll friendly)."""
+    if interview_manager is None:
+        return jsonify({"success": False, "error": "Interview engine unavailable."}), 503
+    buf = _REST_EVENT_BUFFERS.get(session_id)
+    if buf is None:
+        return jsonify({"success": False, "error": "Unknown session."}), 404
+    try:
+        timeout = float(request.args.get("timeout", 0))
+    except ValueError:
+        timeout = 0.0
+    return jsonify({"success": True, "events": buf.drain(timeout=timeout)})
+
+
+@app.route("/api/interview/<session_id>/history")
+def api_interview_history(session_id: str):
+    """Return the session's bounded conversation history."""
+    if interview_manager is None:
+        return jsonify({"success": False, "error": "Interview engine unavailable."}), 503
+    session = interview_manager.get(session_id)
+    if session is None:
+        return jsonify({"success": False, "error": "Unknown session."}), 404
+    return jsonify({"success": True, "history": session.history()})
+
+
+@app.route("/api/interview/<session_id>/cancel", methods=["POST"])
+def api_interview_cancel(session_id: str):
+    """Cancel the in-progress question (if any)."""
+    if interview_manager is None:
+        return jsonify({"success": False, "error": "Interview engine unavailable."}), 503
+    session = interview_manager.get(session_id)
+    if session is None:
+        return jsonify({"success": False, "error": "Unknown session."}), 404
+    cancelled = session.cancel_active(reason="user cancelled")
+    return jsonify({"success": True, "cancelled": cancelled})
+
+
+@app.route("/api/interview/<session_id>/stop", methods=["POST"])
+def api_interview_stop(session_id: str):
+    """Stop a session and release its resources."""
+    if interview_manager is None:
+        return jsonify({"success": False, "error": "Interview engine unavailable."}), 503
+    stopped = interview_manager.stop_session(session_id)
+    _REST_EVENT_BUFFERS.pop(session_id, None)
+    return jsonify({"success": True, "stopped": stopped})
+
+
+class _InterviewEventBuffer:
+    """Thread-safe FIFO of event envelopes for REST (non-WebSocket) clients."""
+
+    def __init__(self, maxlen: int = 1000):
+        self._q: queue.Queue = queue.Queue(maxsize=maxlen)
+
+    def push(self, event: dict) -> None:
+        try:
+            self._q.put_nowait(event)
+        except queue.Full:
+            # Drop oldest to make room (bounded memory on slow consumers).
+            try:
+                self._q.get_nowait()
+                self._q.put_nowait(event)
+            except queue.Empty:
+                pass
+
+    def drain(self, timeout: float = 0.0) -> list[dict]:
+        out: list[dict] = []
+        if timeout > 0:
+            try:
+                out.append(self._q.get(timeout=timeout))
+            except queue.Empty:
+                return out
+        while True:
+            try:
+                out.append(self._q.get_nowait())
+            except queue.Empty:
+                break
+        return out
+
+
+# REST session_id -> event buffer. (WS sessions deliver events directly.)
+_REST_EVENT_BUFFERS: "dict[str, _InterviewEventBuffer]" = {}
+
+
+if sock is not None and interview_manager is not None:
+    @sock.route("/ws/interview")
+    def ws_interview(ws):
+        """
+        Low-latency interview channel. Frontend sends recognized transcript;
+        server streams detection + answer events back.
+
+        Client -> server (JSON frames):
+          { "type": "start", "session_id": "...", "candidate_profile": "..." }
+          { "type": "transcript", "text": "...", "is_final": true|false,
+            "speaker": "them"|"me", "timestamp": <epoch, optional> }
+          { "type": "cancel" }
+          { "type": "stop" }
+          (a bare transcript frame without "type" is also accepted)
+
+        Server -> client (JSON envelopes):
+          { type: TRANSCRIPT_PARTIAL | TRANSCRIPT_FINAL | QUESTION_DETECTED
+                 | ANSWER_GENERATION_STARTED | ANSWER_CHUNK | ANSWER_COMPLETED
+                 | QUESTION_CANCELLED | ERROR,
+            session_id, ts, ... }
+        """
+        send_lock = threading.Lock()
+
+        def safe_send(obj):
+            try:
+                with send_lock:
+                    ws.send(json.dumps(obj))
+            except Exception:  # noqa: BLE001 — connection likely closed
+                pass
+
+        session = None
+        try:
+            while True:
+                raw = ws.receive()
+                if raw is None:
+                    break  # client disconnected
+                try:
+                    msg = json.loads(raw)
+                except (ValueError, TypeError):
+                    safe_send({"type": _iv_session.EVT_ERROR,
+                               "error": "Invalid message.", "recoverable": True})
+                    continue
+
+                mtype = msg.get("type")
+
+                if mtype == "start" or session is None:
+                    if session is None:
+                        session = interview_manager.start_session(
+                            emit=safe_send,
+                            session_id=msg.get("session_id"),
+                            candidate_profile=msg.get("candidate_profile"),
+                            language=msg.get("language"),
+                        )
+                        safe_send({"type": "SESSION_STARTED",
+                                   "session_id": session.id,
+                                   "language": session.language,
+                                   "speech_locale": session.speech_locale,
+                                   "ts": time.time()})
+                    if mtype == "start":
+                        continue
+
+                if mtype == "cancel":
+                    session.cancel_active(reason="user cancelled")
+                    continue
+                if mtype == "stop":
+                    break
+
+                # Transcript frame (explicit type or bare).
+                if mtype in (None, "transcript"):
+                    session.add_transcript(
+                        msg.get("text") or "",
+                        is_final=bool(msg.get("is_final", False)),
+                        speaker=(msg.get("speaker") or "them"),
+                        timestamp=msg.get("timestamp"),
+                    )
+                    continue
+        finally:
+            # Graceful recovery: a dropped WS closes the session so resources
+            # (timer thread, in-flight generation) are released.
+            if session is not None:
+                interview_manager.stop_session(session.id)
+
 
 @app.route("/api/save-edit", methods=["POST"])
 def api_save_edit():

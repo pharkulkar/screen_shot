@@ -4,5 +4,22 @@
   "pressCount":    4,
   "maxIntervalMs": 2000,
   "logFile":       "./logs/daemon.log",
-  "logLevel":      "debug"
+  "logLevel":      "debug",
+
+  "interview": {
+    "detectionConfidenceThreshold": 0.6,
+    "endOfUtteranceMs":             700,
+    "minTranscriptChars":           6,
+    "answerTimeoutS":               45,
+    "maxHistoryTurns":              40,
+    "chatModel":                    null,
+    "temperature":                  0.3,
+    "streaming":                    true,
+    "duplicateWindowS":             120,
+    "maxConcurrentGenerations":     4,
+    "useLlmClassifier":             true,
+    "llmClassifierModel":           null,
+    "defaultLanguage":              "en",
+    "defaultSpeechLocale":          "en-IN"
+  }
 }
