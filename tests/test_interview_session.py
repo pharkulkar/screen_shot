@@ -282,3 +282,73 @@ def test_at_most_one_generation_per_question():
     assert ai.calls == 1
     assert len(col.of(isess.EVT_ANSWER_STARTED)) == 1
     mgr.shutdown()
+
+
+# ── Issue 1: transcript must not be emitted multiple times ─────────────────────
+
+def test_duplicate_partials_emitted_once():
+    """Growing/cumulative STT partials that repeat text should not re-emit."""
+    ai = FakeAI(chunks=["ok"])
+    mgr, _ = make_manager(ai=ai)
+    col = Collector()
+    s = mgr.start_session(emit=col.push, session_id="dup-partial")
+
+    s.add_transcript("what is", is_final=False)
+    s.add_transcript("what is", is_final=False)   # identical -> suppressed
+    s.add_transcript("what is a", is_final=False)  # changed -> emitted
+    s.add_transcript("what is a", is_final=False)  # identical -> suppressed
+
+    partials = col.of(isess.EVT_TRANSCRIPT_PARTIAL)
+    texts = [e["text"] for e in partials]
+    assert texts == ["what is", "what is a"], texts
+    mgr.shutdown()
+
+
+def test_repeated_final_emitted_once():
+    """Repeated final segments of the same utterance emit TRANSCRIPT_FINAL once."""
+    ai = FakeAI(chunks=["ok"])
+    mgr, _ = make_manager(ai=ai, endOfUtteranceMs=400)
+    col = Collector()
+    s = mgr.start_session(emit=col.push, session_id="dup-final")
+
+    s.add_transcript("What is a mutex?", is_final=True)
+    s.add_transcript("What is a mutex?", is_final=True)  # duplicate final
+
+    finals = col.of(isess.EVT_TRANSCRIPT_FINAL)
+    assert len(finals) == 1, [e["text"] for e in finals]
+    mgr.shutdown()
+
+
+def test_new_utterance_after_finalize_not_suppressed():
+    """After one utterance finalizes, an identical later question still emits."""
+    ai = FakeAI(chunks=["ok"])
+    mgr, _ = make_manager(ai=ai, endOfUtteranceMs=80, duplicateWindowS=0)
+    col = Collector()
+    s = mgr.start_session(emit=col.push, session_id="dup-reset")
+
+    s.add_transcript("What is a stack?", is_final=True)
+    assert col.wait_for(isess.EVT_ANSWER_COMPLETED), col.types()
+    # Same text again as a brand-new utterance -> a fresh TRANSCRIPT_FINAL.
+    s.add_transcript("What is a stack?", is_final=True)
+    assert col.wait_for(isess.EVT_TRANSCRIPT_FINAL, count=2, timeout=2.0)
+    mgr.shutdown()
+
+
+# ── Issue 2: complete finals finalize quickly (reduced answer lag) ─────────────
+
+def test_complete_final_finalizes_within_grace_window():
+    """A final ending in terminal punctuation should detect well before the
+    full EOU window elapses."""
+    ai = FakeAI(chunks=["ok"])
+    # Large EOU window; a complete final must still finalize via the short grace.
+    mgr, _ = make_manager(ai=ai, endOfUtteranceMs=2000)
+    col = Collector()
+    s = mgr.start_session(emit=col.push, session_id="fast")
+
+    start = time.time()
+    s.add_transcript("What is a deadlock?", is_final=True)
+    assert col.wait_for(isess.EVT_QUESTION_DETECTED, timeout=1.0), col.types()
+    elapsed = time.time() - start
+    # Must be far below the 2s EOU window (grace ~0.15s + poll tick).
+    assert elapsed < 0.8, f"took {elapsed:.2f}s (expected quick finalize)"
+    mgr.shutdown()

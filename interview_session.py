@@ -124,6 +124,18 @@ class InterviewSession:
         self._pending_deadline = 0.0   # EOU deadline (0 => not armed)
         self._pending_final = False
 
+        # De-duplication of EMITTED transcript events. Many STT engines stream
+        # growing/cumulative results, which otherwise show the same line over
+        # and over on the client. We suppress re-emitting a transcript whose
+        # normalized text we just sent.
+        self._last_partial_norm = ""
+        self._last_final_norm = ""
+
+        # Grace window used when a final segment already looks complete: short,
+        # just enough to coalesce an immediate trailing final, but far below the
+        # full EOU window so answers start quickly. Bounded by the EOU window.
+        self._complete_grace_s = min(self.config.end_of_utterance_s, 0.15)
+
         # Dedup: normalized question text -> last-emitted timestamp.
         self._recent_questions: "dict[str, float]" = {}
 
@@ -174,21 +186,45 @@ class InterviewSession:
 
         with self._lock:
             if not is_final:
+                if not text:
+                    return
                 # Partial: treat as the current best guess of the utterance.
                 self._pending_text = text
-                self._emit(EVT_TRANSCRIPT_PARTIAL,
-                           {"text": text, "speaker": speaker, "ts": ts})
+                norm = _normalize_text(text)
+                # Suppress re-emitting an identical partial (growing STT streams
+                # often repeat the same text), which would double it on the UI.
+                if norm and norm != self._last_partial_norm:
+                    self._last_partial_norm = norm
+                    self._emit(EVT_TRANSCRIPT_PARTIAL,
+                               {"text": text, "speaker": speaker, "ts": ts})
                 return
 
             # Final segment: merge with any pending text from the same utterance.
             merged = self._merge_final(text)
             self._pending_text = merged
             self._pending_final = True
+            merged_norm = _normalize_text(merged)
+
+            # Choose the EOU window adaptively. A final segment that already
+            # looks like a complete sentence/question only needs a short grace
+            # window to catch stray trailing finals; this removes most of the
+            # perceived answer lag. An open-ended final keeps the full window so
+            # late words can still merge.
+            window = self.config.end_of_utterance_s
+            if self._looks_complete(merged):
+                window = min(window, self._complete_grace_s)
             # Arm / re-arm the EOU window (debounce). A later final re-arms it,
             # letting consecutive finals of one question coalesce.
-            self._pending_deadline = ts + self.config.end_of_utterance_s
-            self._emit(EVT_TRANSCRIPT_FINAL,
-                       {"text": merged, "speaker": speaker, "ts": ts})
+            self._pending_deadline = ts + window
+
+            # Suppress a duplicate TRANSCRIPT_FINAL for text we already emitted
+            # as final (repeated finals of the same utterance).
+            if merged_norm and merged_norm != self._last_final_norm:
+                self._last_final_norm = merged_norm
+                # A new final supersedes the last partial line on the client.
+                self._last_partial_norm = merged_norm
+                self._emit(EVT_TRANSCRIPT_FINAL,
+                           {"text": merged, "speaker": speaker, "ts": ts})
 
     def cancel_active(self, reason: str = "cancelled") -> bool:
         """Cancel the active question's generation if any. Returns True if one
@@ -220,10 +256,10 @@ class InterviewSession:
     # ── EOU finalization loop ───────────────────────────────────────────────
 
     def _eou_loop(self) -> None:
-        # Poll at a fraction of the EOU window so finalization is timely but
-        # cheap. The window itself (deadline) is the real decision, not a fixed
+        # Poll fast enough to honor the short "complete" grace window, but no
+        # finer than needed. The deadline is the real decision, not a fixed
         # tick — late finals push the deadline out.
-        tick = max(0.05, self.config.end_of_utterance_s / 4)
+        tick = max(0.03, min(self._complete_grace_s, self.config.end_of_utterance_s / 4))
         while not self._closed:
             time.sleep(tick)
             fire = False
@@ -235,6 +271,10 @@ class InterviewSession:
                     self._pending_final = False
                     candidate = self._pending_text
                     self._pending_text = ""
+                    # New utterance starts fresh: allow its transcript events to
+                    # emit even if they repeat earlier text.
+                    self._last_partial_norm = ""
+                    self._last_final_norm = ""
             if fire:
                 try:
                     self._finalize_utterance(candidate)
@@ -244,6 +284,13 @@ class InterviewSession:
                                {"error": f"finalize failed: {exc}", "recoverable": True})
 
     # ── Internal helpers ─────────────────────────────────────────────────────
+
+    @staticmethod
+    def _looks_complete(text: str) -> bool:
+        """True when a final segment reads like a finished utterance (ends with
+        terminal punctuation), so we can finalize on a short grace window."""
+        stripped = (text or "").strip()
+        return bool(stripped) and stripped.endswith(("?", ".", "!"))
 
     def _merge_final(self, text: str) -> str:
         """Merge a new final segment with pending text, avoiding duplication."""
