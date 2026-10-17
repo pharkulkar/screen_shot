@@ -129,7 +129,7 @@ def _capture_with_mss(out_path: Path, log: logging.Logger):
     import mss
     import mss.tools
 
-    with mss.MSS() as sct:
+    with mss.mss() as sct:
         monitor = sct.monitors[0]   # index 0 = all displays combined
         raw = sct.grab(monitor)
         mss.tools.to_png(raw.rgb, raw.size, output=str(out_path))

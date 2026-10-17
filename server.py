@@ -367,11 +367,24 @@ GALLERY_TEMPLATE = """
       overflow: auto;
       max-width: 85vw;
       max-height: 65vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       background: #000;
       border: 1px solid #333;
     }
 
-    #edit-canvas { display: block; cursor: crosshair; }
+    /* Keep the canvas's internal resolution at full image size (edits/crops
+       stay full-res) but scale the *displayed* size down to fit the wrapper,
+       so the whole screenshot is visible at once. getCanvasCoords() already
+       accounts for this CSS-vs-pixel scale factor. */
+    #edit-canvas {
+      display: block;
+      cursor: crosshair;
+      max-width: 100%;
+      max-height: 65vh;
+      object-fit: contain;
+    }
   </style>
 </head>
 <body>
