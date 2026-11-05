@@ -16,7 +16,10 @@ Design notes:
   (yields answer chunks for low-latency streaming to the overlay).
 """
 
+import logging
 import os
+
+log = logging.getLogger("ai")
 
 # The OpenAI SDK is a hard dependency (requirements.txt), but we import
 # defensively so a missing install surfaces as a clean runtime error rather
@@ -233,6 +236,93 @@ def ask(
         raise _wrap_openai_errors(exc)
 
 
+def transcribe_detailed(
+    audio_bytes: bytes,
+    filename: str = "chunk.webm",
+    model: str | None = None,
+    language: str | None = None,
+    candidate_languages: list[str] | None = None,
+) -> tuple[str, str | None]:
+    """
+    Transcribe a short audio chunk and (best-effort) report its language.
+
+    Returns a 2-tuple ``(text, detected_language | None)``. `language`, when
+    given, is passed to STT as a single hard hint (a base ISO code). We attempt
+    ``response_format="verbose_json"`` so the response can carry a language;
+    if the model rejects that format or returns no usable language, we fall
+    back to a plain transcription and report ``None`` (the caller then runs the
+    LLM classifier). Raises AIError on auth/rate/timeout/connection failures.
+
+    `candidate_languages` is accepted for interface symmetry with the caller;
+    the OpenAI transcription `language` param takes a single code only, so the
+    set itself is used upstream to decide whether to pass a hard hint.
+    """
+    if not audio_bytes:
+        return "", None
+    client = _get_client()
+    import io
+
+    hint = None
+    if language and str(language).strip():
+        hint = str(language).strip().lower().split("-")[0]
+
+    # First attempt: verbose_json so we can read back a detected language.
+    try:
+        buf = io.BytesIO(audio_bytes)
+        buf.name = filename
+        kwargs: dict = {"model": model or TRANSCRIBE_MODEL, "file": buf,
+                        "response_format": "verbose_json"}
+        if hint:
+            kwargs["language"] = hint
+        resp = client.audio.transcriptions.create(**kwargs)
+        text = (getattr(resp, "text", "") or "").strip()
+        detected = getattr(resp, "language", None)
+        if detected:
+            # The API may return a full name or a locale; normalize to a base
+            # code via the registry so downstream comparisons are consistent.
+            detected = _normalize_detected_language(str(detected))
+        return text, (detected or None)
+    except AIError:
+        raise
+    except Exception:  # noqa: BLE001 — verbose_json unsupported / parse miss
+        log.debug("transcribe_detailed: verbose_json failed, falling back to plain")
+
+    # Fallback: plain transcription (text only), language unknown.
+    try:
+        buf = io.BytesIO(audio_bytes)
+        buf.name = filename
+        kwargs = {"model": model or TRANSCRIBE_MODEL, "file": buf}
+        if hint:
+            kwargs["language"] = hint
+        resp = client.audio.transcriptions.create(**kwargs)
+        return (getattr(resp, "text", "") or "").strip(), None
+    except AIError:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        raise _wrap_openai_errors(exc)
+
+
+def _normalize_detected_language(value: str) -> str | None:
+    """Map an STT-reported language (base code, locale, or English name) to a
+    supported base code, or None if it isn't recognized."""
+    v = (value or "").strip().lower()
+    if not v:
+        return None
+    try:
+        import interview_config as _ic
+        registry = _ic.SUPPORTED_LANGUAGES
+    except Exception:  # noqa: BLE001
+        registry = {"en": {"name": "English"}}
+    base = v.replace("_", "-").split("-")[0]
+    if base in registry:
+        return base
+    # Match an English language name (OpenAI sometimes returns e.g. "english").
+    for code, meta in registry.items():
+        if v == str(meta.get("name", "")).lower():
+            return code
+    return None
+
+
 def transcribe(audio_bytes: bytes, filename: str = "chunk.webm", model: str | None = None) -> str:
     """
     Transcribe a short audio chunk to text using OpenAI.
@@ -241,25 +331,59 @@ def transcribe(audio_bytes: bytes, filename: str = "chunk.webm", model: str | No
     segment). `filename` just hints the format to the API via its extension.
     Returns the transcript text (may be empty for silence). Raises AIError.
 
+    Text-only wrapper over transcribe_detailed() so existing callers (the Audio
+    tab, tests) keep the same signature and return type.
+
     NOTE: local Whisper (faster-whisper) is the planned zero-cost fallback
     (OQ-2); hook it in here if OPENAI is unavailable or cost must be avoided.
     """
-    if not audio_bytes:
-        return ""
-    client = _get_client()
+    text, _ = transcribe_detailed(audio_bytes, filename=filename, model=model)
+    return text
+
+
+# System prompt for the tiny, set-constrained language classifier.
+_DETECT_LANGUAGE_SYSTEM_PROMPT = (
+    "You identify the language of a short transcript. Respond with ONLY the "
+    "ISO 639-1 base code of the language, chosen strictly from this allowed "
+    "set: {codes}. If you are unsure, return {default}. Output nothing but the "
+    "two-letter code."
+)
+
+
+def detect_language(text: str, candidate_languages: list[str], model: str | None = None) -> str:
+    """
+    Classify `text` into one of `candidate_languages` (base ISO codes) with a
+    single short chat call. NEVER raises: on any error, unparseable reply, or an
+    off-set answer, it coerces to ``candidate_languages[0]`` (the set default).
+    """
+    allowed = [c for c in (candidate_languages or []) if c]
+    if not allowed:
+        return "en"
+    default = allowed[0]
+    text = (text or "").strip()
+    if not text:
+        return default
     try:
-        import io
-        buf = io.BytesIO(audio_bytes)
-        buf.name = filename  # the SDK uses the name to infer the format
-        resp = client.audio.transcriptions.create(
-            model=model or TRANSCRIBE_MODEL,
-            file=buf,
+        if not is_configured():
+            return default
+        client = _get_client()
+        system = _DETECT_LANGUAGE_SYSTEM_PROMPT.format(
+            codes=", ".join(allowed), default=default)
+        resp = client.chat.completions.create(
+            model=model or CHAT_MODEL,
+            messages=[{"role": "system", "content": system},
+                      {"role": "user", "content": text}],
         )
-        return (getattr(resp, "text", "") or "").strip()
-    except AIError:
-        raise
-    except Exception as exc:  # noqa: BLE001
-        raise _wrap_openai_errors(exc)
+        raw = (resp.choices[0].message.content or "").strip().lower()
+    except Exception as exc:  # noqa: BLE001 — classification must never crash
+        log.debug("detect_language failed, using set default %r: %s", default, exc)
+        return default
+    base = raw.replace("_", "-").split("-")[0].strip()
+    # Keep only the first token of letters (the model may add stray words).
+    import re as _re
+    m = _re.search(r"[a-z]{2,3}", base)
+    code = m.group(0) if m else ""
+    return code if code in allowed else default
 
 
 def ask_stream(
@@ -343,21 +467,42 @@ def suggest(dialogue: str, tone: str | None = None, model: str | None = None) ->
 
 # ── Interview answer generation (automatic question answering) ─────────────────
 
-# Human-readable names for the language codes we support. English is default.
-# Extend this map as more languages are added to the detection/answer pipeline.
-LANGUAGE_NAMES = {
-    "en": "English",
-}
+# Human-readable names for the language codes we support. These are looked up
+# from the canonical registry in interview_config so ai.py and the config stay
+# in lockstep; a tiny local fallback keeps ai.py usable even if the config
+# import fails (mirrors the defensive OpenAI import above).
+_FALLBACK_LANGUAGE_NAMES = {"en": "English"}
+
+
+def _language_names() -> dict:
+    """Return {code: English name} from the interview_config registry, with a
+    local English-only fallback if the config module can't be imported."""
+    try:
+        import interview_config as _ic
+        return {code: meta.get("name", code)
+                for code, meta in _ic.SUPPORTED_LANGUAGES.items()}
+    except Exception:  # noqa: BLE001 — degrade gracefully to English only
+        return dict(_FALLBACK_LANGUAGE_NAMES)
+
+
+# Back-compat module attribute (kept so existing importers still see a map).
+LANGUAGE_NAMES = _language_names()
 DEFAULT_ANSWER_LANGUAGE = os.environ.get("INTERVIEW_DEFAULT_LANGUAGE", "en").split("-")[0].lower()
 
 
-def _language_instruction(language: str | None) -> str:
+def language_instruction(language: str | None) -> str:
     """Return a one-line instruction pinning the answer language (English by
     default). Unknown/empty values fall back to English — we never silently
-    switch to an unsupported language."""
+    switch to an unsupported language. This is the shared source of the
+    answer-language directive string (reused by server.py's /api/ask path)."""
     code = (language or DEFAULT_ANSWER_LANGUAGE or "en").strip().lower().split("-")[0]
-    name = LANGUAGE_NAMES.get(code, "English")
-    return f"- Always respond in {name}, regardless of the input language."
+    name = _language_names().get(code, "English")
+    return (f"- Always respond in {name}, regardless of the input language. "
+            "Match the language of the interviewer's question exactly.")
+
+
+# Backward-compat alias for internal callers (the public name is preferred).
+_language_instruction = language_instruction
 
 
 def _build_interview_prompt(category: str | None, language: str | None = None) -> str:

@@ -66,11 +66,13 @@ def _now() -> float:
 class Question:
     """A detected question and the lifecycle of its answer generation."""
 
-    def __init__(self, qid: str, text: str, category: str, confidence: float):
+    def __init__(self, qid: str, text: str, category: str, confidence: float,
+                 language: str | None = None):
         self.id = qid
         self.text = text
         self.category = category
         self.confidence = confidence
+        self.language = language   # answer-generation language (coerced in-set)
         self.created_at = _now()
         self.status = "detected"   # detected -> generating -> completed/error/cancelled
         self.answer = ""
@@ -82,6 +84,7 @@ class Question:
             "text": self.text,
             "category": self.category,
             "confidence": self.confidence,
+            "language": self.language,
             "status": self.status,
             "created_at": self.created_at,
         }
@@ -99,7 +102,8 @@ class InterviewSession:
 
     def __init__(self, session_id, config, detector, ai_module, emit,
                  executor: ThreadPoolExecutor, candidate_profile: str | None = None,
-                 db_module=None, clock=_now, language: str | None = None):
+                 db_module=None, clock=_now, language: str | None = None,
+                 languages: list[str] | None = None):
         self.id = session_id
         self.config = config
         self.detector = detector
@@ -110,10 +114,16 @@ class InterviewSession:
         self.db = db_module
         self._clock = clock
 
-        # Resolve the session language once. If the frontend did not provide one
-        # (or provided an unsupported value), fall back to the configured
-        # default (English). We never auto-switch mid-session on a stray phrase.
-        self.language = self._resolve_language(language)
+        # Resolve the selected language SET (multi-select) and the session
+        # default. When a non-empty set is supplied it owns the default (its
+        # first surviving code); otherwise we fall back to the single
+        # `language`/config default. We never lock the session to one language:
+        # each utterance is tagged with its own detected code (within the set).
+        self.languages = self._resolve_languages(languages, language)
+        self.default_language = self.languages[0]
+        # Keep self.language/self.speech_locale as the status default so the
+        # SESSION_STARTED strip and bare-{} behavior stay identical to today.
+        self.language = self.default_language
         self.speech_locale = self._resolve_speech_locale()
 
         self._lock = threading.RLock()
@@ -123,6 +133,7 @@ class InterviewSession:
         self._pending_text = ""
         self._pending_deadline = 0.0   # EOU deadline (0 => not armed)
         self._pending_final = False
+        self._pending_language = None  # TRUE detected code for the pending turn
 
         # De-duplication of EMITTED transcript events. Many STT engines stream
         # growing/cumulative results, which otherwise show the same line over
@@ -149,18 +160,54 @@ class InterviewSession:
 
     # ── Language resolution ──────────────────────────────────────────────────
 
-    def _resolve_language(self, language: str | None) -> str:
-        """Normalize the requested language, else fall back to config default."""
+    def _resolve_languages(self, languages: list[str] | None,
+                           language: str | None) -> list[str]:
+        """Resolve the selected language set.
+
+        Precedence: a non-empty `languages` set wins (its first surviving code
+        is the default); else a single `language`; else the config default
+        (English today). Always returns a non-empty, deduped list of supported
+        base codes."""
         default = getattr(self.config, "language", None) or getattr(
             self.config, "defaultLanguage", "en"
         )
         try:
             import interview_config as _ic
-            return _ic.normalize_language(language, fallback=_ic.normalize_language(default))
-        except Exception:  # noqa: BLE001 — stay usable without the config module
+            fb = _ic.normalize_language(default)
+            if isinstance(languages, (list, tuple)) and len(languages) > 0:
+                resolved = _ic.normalize_language_set(languages, fallback=fb)
+                if resolved:
+                    return resolved
             if language and str(language).strip():
-                return str(language).strip().lower().split("-")[0]
-            return (default or "en").lower().split("-")[0]
+                return [_ic.normalize_language(language, fallback=fb)]
+            return _ic.normalize_language_set(
+                getattr(self.config, "defaultLanguages", None) or [fb], fallback=fb)
+        except Exception:  # noqa: BLE001 — stay usable without the config module
+            def _base(v):
+                return str(v).strip().lower().split("-")[0]
+            if isinstance(languages, (list, tuple)) and len(languages) > 0:
+                out = []
+                for v in languages:
+                    if v and _base(v) not in out:
+                        out.append(_base(v))
+                if out:
+                    return out
+            if language and str(language).strip():
+                return [_base(language)]
+            return [_base(default) or "en"]
+
+    def _coerce_language_in_set(self, value: str | None) -> str:
+        """Coerce a (possibly out-of-set) language code into the selected set,
+        defaulting to the session default. This is the answer-side rule: we
+        never answer in a language the user did not select."""
+        try:
+            import interview_config as _ic
+            return _ic.normalize_language_in_set(
+                value, self.languages, fallback=self.default_language)
+        except Exception:  # noqa: BLE001
+            base = (value or self.default_language)
+            base = str(base).strip().lower().split("-")[0]
+            return base if base in self.languages else self.default_language
 
     def _resolve_speech_locale(self) -> str:
         try:
@@ -172,12 +219,18 @@ class InterviewSession:
     # ── Public API ─────────────────────────────────────────────────────────
 
     def add_transcript(self, text: str, is_final: bool, speaker: str = "them",
-                       timestamp: float | None = None) -> None:
+                       timestamp: float | None = None,
+                       language: str | None = None) -> None:
         """
         Ingest a transcript segment. Partial segments update the pending buffer
         and emit TRANSCRIPT_PARTIAL. A final segment emits TRANSCRIPT_FINAL and
         arms the EOU window; actual question detection happens when the window
         elapses (so trailing words can still merge).
+
+        `language` is the TRUE per-utterance detected code (may be out of the
+        selected set); it is carried onto the finalized turn and used for
+        detection routing, while the ANSWER language is coerced into the set in
+        _finalize_utterance.
         """
         text = (text or "").strip()
         if self._closed:
@@ -185,6 +238,8 @@ class InterviewSession:
         ts = timestamp if timestamp is not None else self._clock()
 
         with self._lock:
+            if language and str(language).strip():
+                self._pending_language = str(language).strip().lower().split("-")[0]
             if not is_final:
                 if not text:
                     return
@@ -223,8 +278,12 @@ class InterviewSession:
                 self._last_final_norm = merged_norm
                 # A new final supersedes the last partial line on the client.
                 self._last_partial_norm = merged_norm
-                self._emit(EVT_TRANSCRIPT_FINAL,
-                           {"text": merged, "speaker": speaker, "ts": ts})
+                final_evt = {"text": merged, "speaker": speaker, "ts": ts}
+                if self._pending_language:
+                    # TRANSCRIPT_FINAL carries the TRUE per-turn code (honest
+                    # label for the original-language, untranslated text).
+                    final_evt["language"] = self._pending_language
+                self._emit(EVT_TRANSCRIPT_FINAL, final_evt)
 
     def cancel_active(self, reason: str = "cancelled") -> bool:
         """Cancel the active question's generation if any. Returns True if one
@@ -270,14 +329,16 @@ class InterviewSession:
                     self._pending_deadline = 0.0
                     self._pending_final = False
                     candidate = self._pending_text
+                    candidate_language = self._pending_language
                     self._pending_text = ""
+                    self._pending_language = None
                     # New utterance starts fresh: allow its transcript events to
                     # emit even if they repeat earlier text.
                     self._last_partial_norm = ""
                     self._last_final_norm = ""
             if fire:
                 try:
-                    self._finalize_utterance(candidate)
+                    self._finalize_utterance(candidate, candidate_language)
                 except Exception as exc:  # noqa: BLE001 — never kill the loop
                     log.exception("finalize failed: %s", exc)
                     self._emit(EVT_ERROR,
@@ -290,7 +351,7 @@ class InterviewSession:
         """True when a final segment reads like a finished utterance (ends with
         terminal punctuation), so we can finalize on a short grace window."""
         stripped = (text or "").strip()
-        return bool(stripped) and stripped.endswith(("?", ".", "!"))
+        return bool(stripped) and stripped.endswith(("?", ".", "!", "？", "؟", "।"))
 
     def _merge_final(self, text: str) -> str:
         """Merge a new final segment with pending text, avoiding duplication."""
@@ -307,15 +368,20 @@ class InterviewSession:
             return prev
         return (prev + " " + text).strip()
 
-    def _finalize_utterance(self, text: str) -> None:
+    def _finalize_utterance(self, text: str, turn_language: str | None = None) -> None:
         text = (text or "").strip()
         if not text:
             return
+        # The TRUE per-utterance language (may be out of the selected set); used
+        # to route detection. The ANSWER language is coerced into the set below.
+        true_lang = turn_language or self.default_language
+        answer_lang = self._coerce_language_in_set(true_lang)
         # Always record the turn into bounded history (context for follow-ups).
         with self._lock:
-            self.turns.append({"speaker": "them", "text": text, "ts": self._clock()})
+            self.turns.append({"speaker": "them", "text": text,
+                               "ts": self._clock(), "language": true_lang})
 
-        result = self.detector.detect(text)
+        result = self.detector.detect(text, language=true_lang)
         if not (result.is_question
                 and result.confidence >= self.config.detectionConfidenceThreshold):
             log.debug("not a question (conf=%.2f): %r", result.confidence, text)
@@ -341,7 +407,8 @@ class InterviewSession:
                             "reason": "replaced by newer question"})
 
             qid = uuid.uuid4().hex
-            question = Question(qid, text, result.category, result.confidence)
+            question = Question(qid, text, result.category, result.confidence,
+                                language=answer_lang)
             self._active_question = question
 
         self._emit(EVT_QUESTION_DETECTED, {
@@ -414,7 +481,8 @@ class InterviewSession:
                 for piece in self.ai.answer_interview_question_stream(
                     question.text, category=question.category, context=context,
                     candidate_profile=self.candidate_profile,
-                    model=model, temperature=temperature, language=self.language,
+                    model=model, temperature=temperature,
+                    language=question.language or self.default_language,
                 ):
                     if question.cancelled.is_set():
                         return
@@ -429,7 +497,8 @@ class InterviewSession:
                 answer = self.ai.answer_interview_question(
                     question.text, category=question.category, context=context,
                     candidate_profile=self.candidate_profile,
-                    model=model, temperature=temperature, language=self.language,
+                    model=model, temperature=temperature,
+                    language=question.language or self.default_language,
                 )
                 if question.cancelled.is_set():
                     return
@@ -508,7 +577,8 @@ class SessionManager:
 
     def start_session(self, emit, session_id: str | None = None,
                       candidate_profile: str | None = None,
-                      language: str | None = None) -> InterviewSession:
+                      language: str | None = None,
+                      languages: list[str] | None = None) -> InterviewSession:
         sid = session_id or uuid.uuid4().hex
         with self._lock:
             existing = self._sessions.get(sid)
@@ -517,7 +587,7 @@ class SessionManager:
             session = InterviewSession(
                 sid, self.config, self.detector, self.ai, emit,
                 self._executor, candidate_profile=candidate_profile,
-                db_module=self.db, language=language,
+                db_module=self.db, language=language, languages=languages,
             )
             self._sessions[sid] = session
             return session

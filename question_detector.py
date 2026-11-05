@@ -144,9 +144,9 @@ def _looks_incomplete(text: str, min_chars: int) -> bool:
         return True
     if len(norm) < max(3, min_chars):
         return True
-    stripped = norm.rstrip(" .!?,")
+    stripped = norm.rstrip(" .!?,？؟।")
     last_word = stripped.split(" ")[-1] if stripped else ""
-    ends_terminal = norm.endswith(("?", ".", "!"))
+    ends_terminal = norm.endswith(("?", ".", "!", "？", "؟", "।"))
     if not ends_terminal and last_word in _INCOMPLETE_TRAILERS:
         return True
     return False
@@ -188,9 +188,9 @@ def heuristic_detect(text: str, min_chars: int = 6) -> DetectionResult:
     score = 0.0
     reasons = []
 
-    if norm.endswith("?"):
+    if norm.endswith(("?", "？", "؟", "।")):
         score += 0.55
-        reasons.append("ends with '?'")
+        reasons.append("ends with terminal question mark")
 
     first_word = norm.split(" ")[0]
     if first_word in _WH_WORDS:
@@ -330,17 +330,38 @@ class QuestionDetector:
         self.config = config
         self.ai_module = ai_module
 
-    def detect(self, text: str) -> DetectionResult:
+    def detect(self, text: str, language: str | None = None) -> DetectionResult:
         base = heuristic_detect(text, min_chars=self.config.minTranscriptChars)
+        lang = (language or "en").strip().lower().split("-")[0] or "en"
 
         # A clear ignore or an obviously strong question: trust the heuristic.
+        # For non-English we bypass ONLY the ambiguous-confidence band (the
+        # English lexicon can't score foreign tokens) but still honor the
+        # operator toggle and never spend tokens on half-spoken fragments.
         use_llm = (
             self.config.useLlmClassifier
             and self.ai_module is not None
             and base.complete  # never spend tokens on half-spoken fragments
-            and self.AMBIGUOUS_LOW <= base.confidence <= self.AMBIGUOUS_HIGH
+            and (lang != "en"
+                 or self.AMBIGUOUS_LOW <= base.confidence <= self.AMBIGUOUS_HIGH)
         )
         if not use_llm:
+            # Non-English, LLM unavailable: use a lenient heuristic so a bare
+            # non-Latin question (which only earns ~0.55 from the terminal-mark
+            # score, below the 0.6 finalization gate) is not silently dropped.
+            if lang != "en" and base.complete:
+                norm = _normalize(text)
+                ends_terminal = norm.endswith(("?", "？", "؟", "।", "!", "."))
+                if ends_terminal or len(norm) >= self.config.minTranscriptChars:
+                    return DetectionResult(
+                        is_question=True,
+                        confidence=max(base.confidence,
+                                       self.config.detectionConfidenceThreshold),
+                        category=base.category,
+                        complete=True,
+                        reason=(base.reason + "; non-en lenient floor").strip("; "),
+                        source="heuristic",
+                    )
             return base
 
         llm = llm_detect(text, self.ai_module, model=self.config.llmClassifierModel)

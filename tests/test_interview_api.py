@@ -94,6 +94,28 @@ def test_history_endpoint(client_with_fake_ai):
     assert any("REST" in t["text"] for t in hist)
 
 
+def test_health_entries_include_native(client_with_fake_ai):
+    client, _ = client_with_fake_ai
+    h = client.get("/api/health").get_json()
+    langs = h["supported_languages"]
+    assert langs and all("native" in l for l in langs)
+    en = next(l for l in langs if l["code"] == "en")
+    assert en["native"] == "English"
+    assert en["locale"] == "en-IN"
+
+
+def test_start_with_languages_echoes_set(client_with_fake_ai):
+    client, _ = client_with_fake_ai
+    body = client.post("/api/interview/start",
+                       json={"languages": ["hi", "en", "xx"]}).get_json()
+    assert body["success"] is True
+    # Unknown 'xx' dropped; order preserved; default is the first ('hi').
+    assert body["languages"] == ["hi", "en"]
+    assert body["language"] == "hi"
+    client.application  # keep reference
+    server.interview_manager.stop_session(body["session_id"])
+
+
 def test_unknown_session_404(client_with_fake_ai):
     client, _ = client_with_fake_ai
     r = client.post("/api/interview/does-not-exist/transcript",

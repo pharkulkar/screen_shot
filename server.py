@@ -130,6 +130,42 @@ except Exception as _iv_exc:  # noqa: BLE001
     _iv_session = None
     interview_manager = None
 
+
+def _normalize_language(value, fallback: str = "en") -> str:
+    """Normalize a single language value to a supported base code (defensive)."""
+    try:
+        import interview_config as _ic
+        return _ic.normalize_language(value, fallback=fallback)
+    except Exception:  # noqa: BLE001
+        if value and str(value).strip():
+            return str(value).strip().lower().split("-")[0]
+        return fallback
+
+
+def _normalize_language_set(values, fallback: str = "en") -> list:
+    """Normalize a client list to a deduped set of supported base codes."""
+    try:
+        import interview_config as _ic
+        return _ic.normalize_language_set(values, fallback=fallback)
+    except Exception:  # noqa: BLE001
+        out = []
+        if isinstance(values, (list, tuple)):
+            for v in values:
+                if v and str(v).strip():
+                    b = str(v).strip().lower().split("-")[0]
+                    if b not in out:
+                        out.append(b)
+        return out or [fallback]
+
+
+def _speech_locale_for(language) -> str:
+    try:
+        import interview_config as _ic
+        return _ic.speech_locale_for(language)
+    except Exception:  # noqa: BLE001
+        return "en-IN"
+
+
 # ── Resolve project root ──────────────────────────────────────────────────────
 ROOT = Path(__file__).resolve().parent
 
@@ -1150,6 +1186,7 @@ def api_health():
             import interview_config as _ic
             languages = [
                 {"code": code, "name": meta.get("name", code),
+                 "native": meta.get("native", meta.get("name", code)),
                  "locale": meta.get("default_locale")}
                 for code, meta in _ic.SUPPORTED_LANGUAGES.items()
             ]
@@ -1197,9 +1234,20 @@ def api_ask():
     system_prompt = data.get("system_prompt")
     tone = data.get("tone")
     record_id = data.get("record_id")  # optional: persist answer onto a record
+    language = data.get("language")    # optional: pin the answer language
 
     if not text:
         return jsonify({"success": False, "error": "Missing 'text'."}), 400
+
+    # Optionally pin the answer language by APPENDING a one-line directive to the
+    # existing answer-mode system prompt (never replacing it). Only applied for a
+    # supported non-English code; absent/en leaves the body byte-for-byte today's
+    # so the Answer tab is unaffected.
+    if language:
+        lang_code = _normalize_language(language)
+        if lang_code and lang_code != "en":
+            base_prompt = system_prompt or ai_helper.ANSWER_SYSTEM_PROMPT
+            system_prompt = base_prompt + "\n" + ai_helper.language_instruction(lang_code)
 
     # ── Streaming (SSE) ────────────────────────────────────────────────────
     if want_stream:
@@ -1726,8 +1774,41 @@ if sock is not None:
                     safe_send({"type": "error", "error": "AI helper unavailable."})
                     continue
 
+                # The Interview-tab STT path carries a selected language set; the
+                # Audio tab does NOT. Absent `languages` == exactly today: call
+                # the plain transcribe() and emit a backward-compatible reply.
+                raw_languages = msg.get("languages")
+                has_langs = isinstance(raw_languages, (list, tuple)) and len(raw_languages) > 0
+                true_lang = None
+                speech_locale = None
+
                 try:
-                    text = ai_helper.transcribe(audio_bytes, filename=filename)
+                    if has_langs:
+                        selected = _normalize_language_set(raw_languages)
+                        # A single selected language is a hard STT hint; a set of
+                        # 2+ passes no hard hint (the API takes one code only) and
+                        # relies on the classifier fallback below.
+                        hint = selected[0] if len(selected) == 1 else None
+                        text, detected = ai_helper.transcribe_detailed(
+                            audio_bytes, filename=filename,
+                            language=hint, candidate_languages=selected,
+                        )
+                        if text:
+                            # Determine the TRUE detected language honestly.
+                            if detected and detected in selected:
+                                true_lang = detected
+                            elif len(selected) == 1:
+                                # Single-language session: always tag that code
+                                # even when STT/classifier return nothing.
+                                true_lang = detected or selected[0]
+                            else:
+                                # No in-set STT language: run the set-constrained
+                                # classifier fallback (always returns in-set).
+                                true_lang = detected or ai_helper.detect_language(
+                                    text, selected)
+                            speech_locale = _speech_locale_for(true_lang)
+                    else:
+                        text = ai_helper.transcribe(audio_bytes, filename=filename)
                 except ai_helper.AIError as e:
                     safe_send({"type": "error", "error": str(e)})
                     continue
@@ -1740,7 +1821,12 @@ if sock is not None:
 
                 if convo is not None:
                     convo.add_turn(speaker, text)
-                safe_send({"type": "transcript", "speaker": speaker, "text": text})
+                reply = {"type": "transcript", "speaker": speaker, "text": text}
+                if true_lang:
+                    reply["language"] = true_lang
+                if speech_locale:
+                    reply["speech_locale"] = speech_locale
+                safe_send(reply)
 
                 # Arm auto-suggest when the OTHER person just spoke.
                 if speaker == "them":
@@ -1770,17 +1856,19 @@ def api_interview_start():
     sid = data.get("session_id")
     profile = data.get("candidate_profile")
     language = data.get("language")  # optional; falls back to default English
+    languages = data.get("languages")  # optional multi-select set
 
     buf = _InterviewEventBuffer()
     session = interview_manager.start_session(
         emit=buf.push, session_id=sid, candidate_profile=profile,
-        language=language,
+        language=language, languages=languages,
     )
     _REST_EVENT_BUFFERS[session.id] = buf
     return jsonify({
         "success": True,
         "session_id": session.id,
         "language": session.language,
+        "languages": session.languages,
         "speech_locale": session.speech_locale,
         "config": _INTERVIEW_CONFIG.to_dict() if _INTERVIEW_CONFIG else {},
     })
@@ -1945,11 +2033,13 @@ if sock is not None and interview_manager is not None:
                             session_id=msg.get("session_id"),
                             candidate_profile=msg.get("candidate_profile"),
                             language=msg.get("language"),
+                            languages=msg.get("languages"),
                         )
                         safe_send({"type": "SESSION_STARTED",
                                    "session_id": session.id,
                                    "language": session.language,
                                    "speech_locale": session.speech_locale,
+                                   "languages": session.languages,
                                    "ts": time.time()})
                     if mtype == "start":
                         continue
@@ -1967,6 +2057,7 @@ if sock is not None and interview_manager is not None:
                         is_final=bool(msg.get("is_final", False)),
                         speaker=(msg.get("speaker") or "them"),
                         timestamp=msg.get("timestamp"),
+                        language=msg.get("language"),
                     )
                     continue
         finally:

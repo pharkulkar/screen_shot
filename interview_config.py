@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import json
 import os
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, field
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
@@ -42,18 +42,38 @@ _DEFAULTS: dict = {
     "useLlmClassifier": True,              # use LLM to confirm ambiguous cases
     "llmClassifierModel": None,            # None -> ai.py default
     "defaultLanguage": "en",               # default language code (English)
+    "defaultLanguages": ["en"],            # default multi-select set (English)
     "defaultSpeechLocale": "en-IN",        # preferred STT locale (Indian English)
 }
 
 
 # ── Language registry (extensible) ─────────────────────────────────────────────
-# Maps a base language code -> human name + the speech-to-text locale we prefer.
-# English is the default; add entries here to support more languages later. The
-# session/detector/answer layers only need the base code; the locale is a hint
-# the frontend's STT provider can use (falling back to its own English locale if
-# en-IN is unavailable).
+# Maps a base language code -> human name + native label + the speech-to-text
+# locale we prefer. English is the default. The session/detector/answer layers
+# only need the base code; the locale is a hint the frontend's STT provider can
+# use (falling back to its own English locale if the locale is unavailable). The
+# `native` label is used by the frontend dropdown.
 SUPPORTED_LANGUAGES: dict = {
-    "en": {"name": "English", "default_locale": "en-IN"},
+    "en": {"name": "English", "native": "English", "default_locale": "en-IN"},
+    "hi": {"name": "Hindi", "native": "हिन्दी", "default_locale": "hi-IN"},
+    "mr": {"name": "Marathi", "native": "मराठी", "default_locale": "mr-IN"},
+    "zh": {"name": "Chinese", "native": "中文", "default_locale": "zh-CN"},
+    "es": {"name": "Spanish", "native": "Español", "default_locale": "es-ES"},
+    "fr": {"name": "French", "native": "Français", "default_locale": "fr-FR"},
+    "de": {"name": "German", "native": "Deutsch", "default_locale": "de-DE"},
+    "ja": {"name": "Japanese", "native": "日本語", "default_locale": "ja-JP"},
+    "ko": {"name": "Korean", "native": "한국어", "default_locale": "ko-KR"},
+    "ar": {"name": "Arabic", "native": "العربية", "default_locale": "ar-SA"},
+    "pt": {"name": "Portuguese", "native": "Português", "default_locale": "pt-BR"},
+    "ru": {"name": "Russian", "native": "Русский", "default_locale": "ru-RU"},
+    "it": {"name": "Italian", "native": "Italiano", "default_locale": "it-IT"},
+    "nl": {"name": "Dutch", "native": "Nederlands", "default_locale": "nl-NL"},
+    "tr": {"name": "Turkish", "native": "Türkçe", "default_locale": "tr-TR"},
+    "ta": {"name": "Tamil", "native": "தமிழ்", "default_locale": "ta-IN"},
+    "te": {"name": "Telugu", "native": "తెలుగు", "default_locale": "te-IN"},
+    "bn": {"name": "Bengali", "native": "বাংলা", "default_locale": "bn-IN"},
+    "gu": {"name": "Gujarati", "native": "ગુજરાતી", "default_locale": "gu-IN"},
+    "pa": {"name": "Punjabi", "native": "ਪੰਜਾਬੀ", "default_locale": "pa-IN"},
 }
 
 DEFAULT_LANGUAGE = "en"
@@ -82,10 +102,57 @@ def speech_locale_for(language: str | None) -> str:
     return SUPPORTED_LANGUAGES.get(base, {}).get("default_locale", DEFAULT_SPEECH_LOCALE)
 
 
+def normalize_language_set(values, fallback: str = DEFAULT_LANGUAGE) -> list[str]:
+    """
+    Normalize a client-supplied list of language values to a deduped list of
+    supported base codes, preserving order.
+
+    Unknown/empty entries are dropped. A non-list (or an all-unknown/empty list)
+    yields ``[fallback]`` so the result is never empty — the selected set always
+    contains at least the fallback (English by default).
+    """
+    out: list[str] = []
+    if isinstance(values, (list, tuple)):
+        for v in values:
+            if not v or not str(v).strip():
+                continue
+            base = str(v).strip().lower().replace("_", "-").split("-")[0]
+            if base in SUPPORTED_LANGUAGES and base not in out:
+                out.append(base)
+    if not out:
+        fb = normalize_language(fallback, fallback=DEFAULT_LANGUAGE)
+        out = [fb]
+    return out
+
+
+def normalize_language_in_set(value: str | None, allowed, fallback: str | None = None) -> str:
+    """
+    Normalize ``value`` and keep it inside ``allowed``.
+
+    If the normalized code is not in ``allowed``, return ``fallback`` (when it is
+    itself in ``allowed``) else the first allowed code. This is the answer-side
+    coercion: we never answer in a language the user did not select.
+    """
+    allowed_list = list(allowed) if allowed else [DEFAULT_LANGUAGE]
+    if not allowed_list:
+        allowed_list = [DEFAULT_LANGUAGE]
+    base = normalize_language(value, fallback=allowed_list[0])
+    if base in allowed_list:
+        return base
+    if fallback and fallback in allowed_list:
+        return fallback
+    return allowed_list[0]
+
+
 def _coerce(value, like):
     """Coerce an env string to the type of the default it overrides."""
     if value is None:
         return like
+    if isinstance(like, list):
+        # Comma-split an env string into a list (e.g. "en,hi,mr").
+        if isinstance(value, (list, tuple)):
+            return list(value)
+        return [p.strip() for p in str(value).split(",") if p.strip()]
     if isinstance(like, bool):
         return str(value).strip().lower() in ("1", "true", "yes", "on")
     if isinstance(like, int) and not isinstance(like, bool):
@@ -116,6 +183,7 @@ _ENV_MAP = {
     "useLlmClassifier": "INTERVIEW_USE_LLM_CLASSIFIER",
     "llmClassifierModel": "INTERVIEW_LLM_CLASSIFIER_MODEL",
     "defaultLanguage": "INTERVIEW_DEFAULT_LANGUAGE",
+    "defaultLanguages": "INTERVIEW_DEFAULT_LANGUAGES",
     "defaultSpeechLocale": "INTERVIEW_SPEECH_LOCALE",
 }
 
@@ -135,6 +203,7 @@ class InterviewConfig:
     useLlmClassifier: bool = _DEFAULTS["useLlmClassifier"]
     llmClassifierModel: str | None = _DEFAULTS["llmClassifierModel"]
     defaultLanguage: str = _DEFAULTS["defaultLanguage"]
+    defaultLanguages: list = field(default_factory=lambda: list(_DEFAULTS["defaultLanguages"]))
     defaultSpeechLocale: str = _DEFAULTS["defaultSpeechLocale"]
 
     @property
@@ -145,6 +214,15 @@ class InterviewConfig:
     def language(self) -> str:
         """The effective default language, normalized to a supported code."""
         return normalize_language(self.defaultLanguage)
+
+    @property
+    def languages(self) -> list[str]:
+        """The effective default multi-select language set (normalized, deduped).
+
+        Falls back to the single default language when no set is configured, so
+        the absent-config path stays identical to today ([en])."""
+        return normalize_language_set(self.defaultLanguages,
+                                      fallback=self.defaultLanguage)
 
     def to_dict(self) -> dict:
         return asdict(self)

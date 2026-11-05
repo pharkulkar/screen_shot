@@ -24,8 +24,9 @@ def test_config_defaults_to_english():
     ("en-IN", "en"),
     ("en_US", "en"),
     ("EN", "en"),
-    ("fr", "en"),        # unsupported -> fall back to English
-    ("zh-CN", "en"),     # unsupported -> fall back to English
+    ("fr", "fr"),        # now supported -> normalized base code
+    ("zh-CN", "zh"),     # now supported -> normalized base code
+    ("xx", "en"),        # still unsupported -> fall back to English
 ])
 def test_normalize_language(value, expected):
     assert ic.normalize_language(value) == expected
@@ -34,7 +35,8 @@ def test_normalize_language(value, expected):
 def test_speech_locale_default():
     assert ic.speech_locale_for(None) == "en-IN"
     assert ic.speech_locale_for("en") == "en-IN"
-    assert ic.speech_locale_for("fr") == "en-IN"  # fallback language's locale
+    assert ic.speech_locale_for("fr") == "fr-FR"   # supported -> its own locale
+    assert ic.speech_locale_for("xx") == "en-IN"   # unknown -> English fallback locale
 
 
 # ── ai.py prompt directive ───────────────────────────────────────────────────
@@ -44,8 +46,13 @@ def test_prompt_pins_english_by_default():
     assert "respond in English" in sys_prompt
 
 
-def test_prompt_unknown_language_falls_back_to_english():
+def test_prompt_supported_language_pins_that_language():
     sys_prompt = ai._build_interview_prompt("general", "fr")
+    assert "French" in sys_prompt
+
+
+def test_prompt_unknown_language_falls_back_to_english():
+    sys_prompt = ai._build_interview_prompt("general", "xx")
     assert "respond in English" in sys_prompt
 
 
@@ -110,6 +117,6 @@ def test_api_health_and_start_report_english_default():
         server.interview_manager.stop_session(started["session_id"])
 
         # Unsupported language on start -> English fallback.
-        bad = client.post("/api/interview/start", json={"language": "fr"}).get_json()
+        bad = client.post("/api/interview/start", json={"language": "xx"}).get_json()
         assert bad["language"] == "en"
         server.interview_manager.stop_session(bad["session_id"])

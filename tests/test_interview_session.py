@@ -37,6 +37,19 @@ class FakeAI:
     def ask(self, text, system_prompt=None, model=None):
         return '{"is_question": true, "confidence": 0.9, "category": "general", "complete": true}'
 
+    # Set-constrained language classifier stub. Distinct from ask() so detector
+    # and detect_language never collide on the single canned ask() reply.
+    # Returns an in-set code based on simple script heuristics, defaulting to
+    # the set default (candidate_languages[0]).
+    def detect_language(self, text, candidate_languages, model=None):
+        allowed = [c for c in (candidate_languages or []) if c] or ["en"]
+        # Any Devanagari character -> Hindi/Marathi if selected.
+        if any("\u0900" <= ch <= "\u097f" for ch in (text or "")):
+            for code in ("hi", "mr"):
+                if code in allowed:
+                    return code
+        return allowed[0]
+
     def answer_interview_question(self, question, category=None, context=None,
                                   candidate_profile=None, model=None, temperature=None,
                                   language=None):
@@ -268,6 +281,50 @@ def test_cancel_before_completion():
     time.sleep(0.8)
     assert not col.of(isess.EVT_ANSWER_COMPLETED)
     assert col.of(isess.EVT_QUESTION_CANCELLED)
+    mgr.shutdown()
+
+
+def test_multi_language_carries_per_turn_language():
+    """A session with languages=['hi','en'] answers a Hindi turn in Hindi and a
+    later English turn in English — the session is not locked to one language."""
+    ai = FakeAI(chunks=["ठीक है"])
+    mgr, _ = make_manager(ai=ai, duplicateWindowS=0)
+    col = Collector()
+    s = mgr.start_session(emit=col.push, session_id="multilang", languages=["hi", "en"])
+    assert s.languages == ["hi", "en"]
+    assert s.default_language == "hi"
+
+    # Hindi turn (true per-utterance language 'hi').
+    s.add_transcript("क्लोज़र क्या है।", is_final=True, language="hi")
+    assert col.wait_for(isess.EVT_ANSWER_COMPLETED), col.types()
+    assert ai.last_language == "hi"
+    qd_hi = col.of(isess.EVT_QUESTION_DETECTED)[-1]
+    assert qd_hi["language"] == "hi"
+
+    # English turn in the SAME session -> answered in English.
+    ai2 = FakeAI(chunks=["ok"])
+    s.ai = ai2  # swap so we can read the next call's language cleanly
+    s.add_transcript("What is a closure?", is_final=True, language="en")
+    assert col.wait_for(isess.EVT_ANSWER_COMPLETED, count=2), col.types()
+    assert ai2.last_language == "en"
+    mgr.shutdown()
+
+
+def test_out_of_set_language_coerced_for_answer_but_honest_on_transcript():
+    """An out-of-set true language is coerced to the set default for answering,
+    while TRANSCRIPT_FINAL keeps the honest true code."""
+    ai = FakeAI(chunks=["ok"])
+    mgr, _ = make_manager(ai=ai, duplicateWindowS=0)
+    col = Collector()
+    s = mgr.start_session(emit=col.push, session_id="oos", languages=["hi", "mr"])
+    # True language 'en' is NOT in the selected set {hi,mr}.
+    s.add_transcript("What is a closure?", is_final=True, language="en")
+    assert col.wait_for(isess.EVT_ANSWER_COMPLETED), col.types()
+    # Answer coerced to the set default 'hi'.
+    assert ai.last_language == "hi"
+    # Transcript keeps the honest true 'en' label.
+    tf = col.of(isess.EVT_TRANSCRIPT_FINAL)[-1]
+    assert tf["language"] == "en"
     mgr.shutdown()
 
 

@@ -20,6 +20,7 @@
     "useLlmClassifier":             true,
     "llmClassifierModel":           null,
     "defaultLanguage":              "en",
+    "defaultLanguages":             ["en"],
     "defaultSpeechLocale":          "en-IN"
   }
 }

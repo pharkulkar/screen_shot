@@ -113,3 +113,42 @@ def test_llm_failure_falls_back_to_heuristic():
     # the LLM path is never reached / fails.
     result = detector.detect("What is a hash map?")
     assert result.is_question is True
+
+
+# ── Non-Latin / non-English detection ──────────────────────────────────────────
+
+@pytest.mark.parametrize("text", [
+    "क्लोज़र क्या है।",   # Devanagari danda
+    "什么是闭包？",         # full-width question mark
+    "ما هو الإغلاق؟",      # Arabic question mark
+])
+def test_non_latin_question_clears_threshold_without_llm(text):
+    """A bare non-Latin question with the LLM disabled must be detected with
+    confidence >= the 0.6 finalization threshold (the lenient non-en floor)."""
+    cfg = InterviewConfig(useLlmClassifier=False)
+    detector = qd.QuestionDetector(cfg, ai_module=None)
+    # Infer a plausible non-en language code from the script.
+    lang = "hi" if any("\u0900" <= c <= "\u097f" for c in text) else (
+        "zh" if any("\u4e00" <= c <= "\u9fff" for c in text) else "ar")
+    result = detector.detect(text, language=lang)
+    assert result.is_question is True, result.reason
+    assert result.confidence >= cfg.detectionConfidenceThreshold
+
+
+def test_non_english_detected_via_llm_stub():
+    """With an LLM stub + a non-en language, the classifier confirms a question."""
+    cfg = InterviewConfig(useLlmClassifier=True)
+    stub = _StubAI('{"is_question": true, "confidence": 0.95, '
+                   '"category": "technical", "complete": true}')
+    detector = qd.QuestionDetector(cfg, ai_module=stub)
+    result = detector.detect("क्लोज़र क्या है।", language="hi")
+    assert result.is_question is True
+    assert stub.calls == 1  # the LLM path was consulted for non-en
+
+
+def test_english_path_unchanged_by_language_default():
+    """Passing no language (English) keeps the existing behavior."""
+    cfg = InterviewConfig(useLlmClassifier=False)
+    detector = qd.QuestionDetector(cfg, ai_module=None)
+    assert detector.detect("What is a closure?").is_question is True
+    assert detector.detect("Thanks, that makes sense.").is_question is False
