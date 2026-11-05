@@ -36,6 +36,13 @@ paddlepaddle==3.2.0
 # 3.2.0) rejects. 1.68.2 is compatible with httpx 0.28.
 openai==1.68.2
 
+# ── Resume parsing (Interview tab resume upload) ──────────────────────────────
+# Session-only resume -> clean text -> optional LLM distillation. Both are
+# pure-Python with no native deps; pypdf extracts text from text-based PDFs
+# (scanned/image-only PDFs are rejected with a clear error, not OCR'd).
+pypdf==5.1.0
+python-docx==1.1.2
+
 # ── Config / secrets ──────────────────────────────────────────────────────────
 # Loads OPENAI_API_KEY (and other config) from a local .env file.
 python-dotenv==1.0.1

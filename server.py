@@ -67,6 +67,11 @@ try:
 except Exception:  # noqa: BLE001
     convo = None
 
+try:
+    import resume_parser
+except Exception:  # noqa: BLE001
+    resume_parser = None
+
 from flask import (Flask, Response, abort, jsonify, render_template_string,
                    request, send_file)
 
@@ -1299,6 +1304,85 @@ def api_ask():
         db_layer.add_history(rid, text, answer)
         return jsonify({"success": True, "answer": answer, "record_id": rid})
     return jsonify({"success": True, "answer": answer})
+
+# ── Resume upload (session-only interview context) ─────────────────────────────
+
+# Route-level upload cap (8 MB). We deliberately do NOT set an app-wide
+# MAX_CONTENT_LENGTH: that would also bound large base64 image/audio bodies on
+# /api/ask and /api/solve. Scoping the limit to this route keeps those intact.
+_RESUME_MAX_BYTES = 8 * 1024 * 1024
+_RESUME_ALLOWED_EXT = (".pdf", ".docx", ".txt")
+
+
+@app.route("/api/resume/parse", methods=["POST"])
+def api_resume_parse():
+    """Parse an uploaded resume into a candidate profile — stateless.
+
+    multipart/form-data with field ``file`` (PDF/DOCX/TXT) and optional
+    ``distill`` (default true). Returns the parsed/distilled profile text; the
+    renderer sends it on the /ws/interview start frame's existing
+    ``candidate_profile`` field. The server NEVER stores it — no DB write, no
+    disk beyond the transient in-memory stream.
+    """
+    if resume_parser is None:
+        return jsonify({
+            "success": False,
+            "error": "Resume parsing is unavailable on the server.",
+        }), 503
+
+    # (1) presence / size / type validation.
+    upload = request.files.get("file")
+    if upload is None or not (upload.filename or "").strip():
+        return jsonify({"success": False, "error": "No file uploaded."}), 400
+
+    if request.content_length and request.content_length > _RESUME_MAX_BYTES:
+        return jsonify({"success": False, "error": "File too large (max 8 MB)."}), 413
+
+    filename = upload.filename
+    lower = filename.lower()
+    if not lower.endswith(_RESUME_ALLOWED_EXT):
+        return jsonify({
+            "success": False,
+            "error": "Unsupported file type; upload PDF, DOCX, or TXT.",
+        }), 415
+
+    # (2) extract text (corrupt/unsupported -> 422).
+    try:
+        text = resume_parser.extract_text(
+            upload.stream, filename, upload.content_type
+        )
+    except resume_parser.ResumeParseError as exc:
+        return jsonify({"success": False, "error": str(exc)}), 422
+    except Exception:  # noqa: BLE001 — never leak file content in the message
+        logging.getLogger(__name__).warning("resume parse failed for an upload")
+        return jsonify({"success": False, "error": "Could not read the file."}), 422
+
+    # (3) empty-text guard BEFORE distill (so ai.ask's empty-input error can't fire).
+    if not text or not text.strip():
+        return jsonify({
+            "success": False,
+            "error": ("No extractable text — the file may be scanned/image-only. "
+                      "Paste the text or upload a text-based resume."),
+        }), 422
+
+    # (4) distill (append-only; raw-text fallback on AI failure/not-configured).
+    distill = request.form.get("distill", "true").lower() != "false"
+    if distill:
+        profile, distilled, truncated = resume_parser.distill(text, ai_helper)
+    else:
+        profile = text[:resume_parser.RESUME_RAW_PROFILE_BUDGET]
+        distilled = False
+        truncated = len(text) > resume_parser.RESUME_RAW_PROFILE_BUDGET
+
+    # (5) return — chars is the PRE-truncation extracted length.
+    return jsonify({
+        "success": True,
+        "profile": profile,
+        "chars": len(text),
+        "truncated": truncated,
+        "distilled": distilled,
+        "filename": filename,
+    })
 
 # ── Records (SQLite) + caching (Feature C) ─────────────────────────────────────
 
