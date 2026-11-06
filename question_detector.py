@@ -197,8 +197,16 @@ def heuristic_detect(text: str, min_chars: int = 6) -> DetectionResult:
         score += 0.3
         reasons.append("wh-word opener")
 
-    if any(norm.startswith(op) or (" " + op) in (" " + norm) for op in _REQUEST_OPENERS):
-        score += 0.35
+    # Request / imperative openers ("tell me about ...", "walk me through ...",
+    # "explain ...", "talk about ...") are genuine questions that rarely end in
+    # a "?". Score them high enough to clear the finalization threshold on their
+    # own, so they are not dropped just because the sentence has no question
+    # mark. This is the primary fix for "no-question-mark questions".
+    matched_request_opener = any(
+        norm.startswith(op) or (" " + op) in (" " + norm) for op in _REQUEST_OPENERS
+    )
+    if matched_request_opener:
+        score += 0.6
         reasons.append("request/imperative opener")
 
     if any(op in norm for op in _FOLLOWUP_OPENERS):
@@ -211,10 +219,13 @@ def heuristic_detect(text: str, min_chars: int = 6) -> DetectionResult:
         score += 0.4
         reasons.append("implicit 'your ...' request")
 
-    # Imperative verbs at the very start ("write ...", "design ...").
+    # Imperative verbs at the very start ("write ...", "design ...", "tell ...",
+    # "walk ...", "talk ..."). These open a request/task even without a "?".
     if first_word in ("write", "implement", "design", "explain", "describe",
-                       "compare", "define", "list", "name", "give"):
-        score += 0.35
+                       "compare", "contrast", "define", "list", "name", "give",
+                       "tell", "walk", "talk", "share", "elaborate", "show",
+                       "discuss", "outline", "summarize", "summarise"):
+        score += 0.6
         reasons.append("imperative verb opener")
 
     # Category-specific nudges: coding / system-design / behavioral phrasing is
@@ -230,6 +241,17 @@ def heuristic_detect(text: str, min_chars: int = 6) -> DetectionResult:
         reasons.append("behavioral prompt signal")
 
     score = max(0.0, min(1.0, score))
+
+    # A clear request/imperative opener makes this a genuine request regardless
+    # of the final word. The "looks incomplete" heuristic (which flags an
+    # utterance whose last word is a connective like "that"/"of") would
+    # otherwise mis-penalise natural requests such as "tell me about this and
+    # that" or "walk me through a project you are proud of" — both complete
+    # questions. So an opener suppresses the incompleteness penalty.
+    strong_opener = ("request/imperative opener" in reasons
+                     or "imperative verb opener" in reasons)
+    if strong_opener:
+        incomplete = False
 
     if incomplete:
         # Penalise but don't zero out — the orchestrator may still wait.
@@ -334,15 +356,25 @@ class QuestionDetector:
         base = heuristic_detect(text, min_chars=self.config.minTranscriptChars)
         lang = (language or "en").strip().lower().split("-")[0] or "en"
 
+        # A request/imperative opener ("tell me about ...", "explain ...") is a
+        # strong structural hint that this is a task even without a "?". When AI
+        # is available we send these to the LLM for a best-accuracy decision
+        # rather than relying on heuristics alone — this catches no-question-mark
+        # questions the lexicon might under- or over-score.
+        request_opener = "request/imperative opener" in base.reason \
+            or "imperative verb opener" in base.reason
+
         # A clear ignore or an obviously strong question: trust the heuristic.
         # For non-English we bypass ONLY the ambiguous-confidence band (the
         # English lexicon can't score foreign tokens) but still honor the
-        # operator toggle and never spend tokens on half-spoken fragments.
+        # operator toggle and never spend tokens on half-spoken fragments. We
+        # also route request-opener utterances to the LLM regardless of band.
         use_llm = (
             self.config.useLlmClassifier
             and self.ai_module is not None
             and base.complete  # never spend tokens on half-spoken fragments
             and (lang != "en"
+                 or request_opener
                  or self.AMBIGUOUS_LOW <= base.confidence <= self.AMBIGUOUS_HIGH)
         )
         if not use_llm:

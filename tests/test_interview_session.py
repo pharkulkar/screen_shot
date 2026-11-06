@@ -28,6 +28,7 @@ class FakeAI:
         self.delay = delay
         self.calls = 0
         self.last_language = None
+        self.last_context = None
         self.lock = threading.Lock()
 
     def is_configured(self):
@@ -56,6 +57,7 @@ class FakeAI:
         with self.lock:
             self.calls += 1
             self.last_language = language
+            self.last_context = context
             fail = self.fail_times > 0
             if fail:
                 self.fail_times -= 1
@@ -71,6 +73,7 @@ class FakeAI:
         with self.lock:
             self.calls += 1
             self.last_language = language
+            self.last_context = context
             fail = self.fail_times > 0
             if fail:
                 self.fail_times -= 1
@@ -233,8 +236,13 @@ def test_multiple_sessions_are_independent():
     assert c2.wait_for(isess.EVT_ANSWER_COMPLETED)
 
     assert s1.history() and s2.history()
-    assert "TCP" in s1.history()[-1]["text"]
-    assert "UDP" in s2.history()[-1]["text"]
+    # History now holds BOTH the interviewer question and our answer turn (the
+    # answer is recorded as a "me" turn so follow-ups have it as context), so the
+    # question is no longer necessarily the LAST turn — assert it is present.
+    assert any("TCP" in t["text"] for t in s1.history())
+    assert any("UDP" in t["text"] for t in s2.history())
+    # The newest turn is our answer (speaker "me"), recorded for follow-up context.
+    assert s1.history()[-1]["speaker"] == "me"
     # No cross-contamination of history.
     assert all("UDP" not in t["text"] for t in s1.history())
     mgr.shutdown()
@@ -251,6 +259,52 @@ def test_generation_failure_emits_recoverable_error():
     err = col.of(isess.EVT_ERROR)[0]
     assert err["recoverable"] is True
     assert not col.of(isess.EVT_ANSWER_COMPLETED)
+    mgr.shutdown()
+
+
+def test_followup_context_includes_prior_qa():
+    """Context memory: a later question's generation context must contain BOTH
+    the earlier interviewer question AND the answer we gave, so follow-ups that
+    reference an earlier term/answer resolve. duplicateWindowS=0 so the two
+    distinct questions both finalize."""
+    ai = FakeAI(answer="A closure captures its lexical scope.")
+    mgr, _ = make_manager(ai=ai, duplicateWindowS=0, streaming=False)
+    col = Collector()
+    s = mgr.start_session(emit=col.push, session_id="ctx")
+
+    # First Q&A exchange.
+    s.add_transcript("What is a closure?", is_final=True)
+    assert col.wait_for(isess.EVT_ANSWER_COMPLETED, count=1), col.types()
+
+    # Follow-up question.
+    s.add_transcript("Can you give an example of that?", is_final=True)
+    assert col.wait_for(isess.EVT_ANSWER_COMPLETED, count=2), col.types()
+
+    # The context passed to the SECOND generation must carry the prior exchange.
+    ctx = ai.last_context or ""
+    assert "What is a closure?" in ctx, ctx          # earlier question
+    assert "closure captures its lexical scope" in ctx, ctx  # our earlier answer
+    # Both speakers are labelled in the dialogue context.
+    assert "Interviewer:" in ctx and "Me:" in ctx, ctx
+    mgr.shutdown()
+
+
+def test_context_is_bounded_to_recent_turns():
+    """Context memory is bounded: only the most recent few turns are included,
+    not the entire session, so old turns fall out of the window."""
+    ai = FakeAI(answer="ok")
+    mgr, _ = make_manager(ai=ai, duplicateWindowS=0, streaming=False, contextTurns=4)
+    col = Collector()
+    s = mgr.start_session(emit=col.push, session_id="ctxbound")
+
+    for i in range(6):
+        s.add_transcript(f"What is concept number {i}?", is_final=True)
+        assert col.wait_for(isess.EVT_ANSWER_COMPLETED, count=i + 1), col.types()
+
+    # With contextTurns=4, the context for the last question should not reach
+    # back to the very first question (concept number 0).
+    ctx = ai.last_context or ""
+    assert "concept number 0" not in ctx, ctx
     mgr.shutdown()
 
 

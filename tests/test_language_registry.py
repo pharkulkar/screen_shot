@@ -53,7 +53,7 @@ def test_in_set_empty_allowed_defaults_english():
 # ── Registry completeness ──────────────────────────────────────────────────────
 
 EXPECTED_CODES = {
-    "en", "hi", "mr", "zh", "es", "fr", "de", "ja", "ko", "ar",
+    "en", "hi", "hing", "mr", "zh", "es", "fr", "de", "ja", "ko", "ar",
     "pt", "ru", "it", "nl", "tr", "ta", "te", "bn", "gu", "pa",
 }
 
@@ -69,3 +69,34 @@ def test_every_entry_has_name_native_locale():
         assert meta.get("default_locale"), code
         # speech_locale_for resolves to that entry's locale.
         assert ic.speech_locale_for(code) == meta["default_locale"]
+
+
+# ── Hinglish pseudo-code ───────────────────────────────────────────────────────
+
+def test_hinglish_is_registered_and_normalizes():
+    # Hinglish is a selectable pseudo-code (Hindi-English code-mix, Roman script).
+    assert "hing" in ic.SUPPORTED_LANGUAGES
+    assert ic.normalize_language("hing") == "hing"
+    # It survives set normalization alongside real codes.
+    assert ic.normalize_language_set(["hing", "en"]) == ["hing", "en"]
+    # STT biasing uses the Hindi locale (the Hindi words are Hindi).
+    assert ic.speech_locale_for("hing") == "hi-IN"
+
+
+def test_hinglish_answer_directive_is_roman_codemix():
+    import ai
+    directive = ai.language_instruction("hing")
+    low = directive.lower()
+    assert "hinglish" in low
+    assert "roman" in low            # must specify Roman/Latin script
+    assert "devanagari" in low       # must say NOT Devanagari
+    # And it does NOT collapse to the generic "respond in Hinglish" wording.
+    assert "regardless of the input language" not in low
+
+
+def test_hinglish_detect_language_allows_four_letter_code():
+    # The set-constrained classifier must be able to return the 4-letter code.
+    import ai
+    # No OpenAI key in tests -> detect_language coerces to the set default,
+    # which must preserve 'hing' when it is the first allowed code.
+    assert ai.detect_language("yeh scalable hai kya", ["hing", "en"]) == "hing"

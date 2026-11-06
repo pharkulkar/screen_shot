@@ -432,14 +432,29 @@ class InterviewSession:
         for k in stale:
             self._recent_questions.pop(k, None)
 
+    # How many of the most RECENT dialogue turns to feed as follow-up context.
+    # One Q&A exchange is ~2 turns (interviewer question + our answer), so this
+    # keeps roughly the last 3-4 exchanges — enough for "that"/"it"/"the one you
+    # mentioned" follow-ups to resolve, without diluting the prompt with the
+    # whole session. Overridable via the interview config (contextTurns).
+    _DEFAULT_CONTEXT_TURNS = 8
+
     def _build_context(self, exclude_text: str) -> str:
-        """Recent dialogue (excluding the current question) for follow-ups."""
+        """Recent dialogue (excluding the current question) for follow-ups.
+
+        Returns only the last few turns (last ~3-4 Q&A exchanges) so a follow-up
+        question that references an earlier term or answer resolves correctly,
+        while keeping the prompt small and fast.
+        """
+        limit = getattr(self.config, "contextTurns", None) or self._DEFAULT_CONTEXT_TURNS
         with self._lock:
             turns = list(self.turns)
+        # Drop the current question (it is passed to the model separately).
+        trimmed = [t for t in turns if t["text"].strip() != exclude_text.strip()]
+        # Keep only the most recent `limit` turns.
+        recent = trimmed[-limit:]
         lines = []
-        for t in turns:
-            if t["text"].strip() == exclude_text.strip():
-                continue
+        for t in recent:
             label = "Me" if t["speaker"] == "me" else "Interviewer"
             lines.append(f"{label}: {t['text']}")
         return "\n".join(lines)
@@ -518,6 +533,13 @@ class InterviewSession:
 
         question.answer = answer
         question.status = "completed"
+        # Record the answer we gave as a "me" turn so later follow-ups ("can you
+        # give an example of that?", "why is that better?") have both the earlier
+        # question AND our answer in context, not just the interviewer's words.
+        with self._lock:
+            self.turns.append({"speaker": "me", "text": answer,
+                               "ts": self._clock(),
+                               "language": question.language or self.default_language})
         self._persist(question)
         self._emit(EVT_ANSWER_COMPLETED, {
             "question_id": question.id,

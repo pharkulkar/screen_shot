@@ -34,6 +34,8 @@ _DEFAULTS: dict = {
     "minTranscriptChars": 6,               # don't reject short valid questions
     "answerTimeoutS": 45,                  # per-answer generation timeout
     "maxHistoryTurns": 40,                 # per-session conversation history cap
+    "contextTurns": 8,                     # recent turns fed as follow-up context
+                                           # (~last 3-4 Q&A exchanges)
     "chatModel": None,                     # None -> ai.py default (gpt-4o-mini)
     "temperature": 0.3,
     "streaming": True,
@@ -56,6 +58,13 @@ _DEFAULTS: dict = {
 SUPPORTED_LANGUAGES: dict = {
     "en": {"name": "English", "native": "English", "default_locale": "en-IN"},
     "hi": {"name": "Hindi", "native": "हिन्दी", "default_locale": "hi-IN"},
+    # Hinglish is NOT an ISO language — it is Hindi-English code-mixing written
+    # in Roman/Latin script (e.g. "yeh function kaise optimize karein"). We model
+    # it as a pseudo-code so it flows through the registry-driven plumbing. STT
+    # biasing uses the Hindi locale (the Hindi words are Hindi), but the OUTPUT
+    # script is forced to Roman via a steering prompt in ai.py, and answers are
+    # generated in the same code-mixed Roman style.
+    "hing": {"name": "Hinglish", "native": "Hinglish", "default_locale": "hi-IN"},
     "mr": {"name": "Marathi", "native": "मराठी", "default_locale": "mr-IN"},
     "zh": {"name": "Chinese", "native": "中文", "default_locale": "zh-CN"},
     "es": {"name": "Spanish", "native": "Español", "default_locale": "es-ES"},
@@ -175,6 +184,7 @@ _ENV_MAP = {
     "minTranscriptChars": "INTERVIEW_MIN_CHARS",
     "answerTimeoutS": "INTERVIEW_ANSWER_TIMEOUT_S",
     "maxHistoryTurns": "INTERVIEW_MAX_HISTORY_TURNS",
+    "contextTurns": "INTERVIEW_CONTEXT_TURNS",
     "chatModel": "INTERVIEW_CHAT_MODEL",
     "temperature": "INTERVIEW_TEMPERATURE",
     "streaming": "INTERVIEW_STREAMING",
@@ -195,6 +205,7 @@ class InterviewConfig:
     minTranscriptChars: int = _DEFAULTS["minTranscriptChars"]
     answerTimeoutS: int = _DEFAULTS["answerTimeoutS"]
     maxHistoryTurns: int = _DEFAULTS["maxHistoryTurns"]
+    contextTurns: int = _DEFAULTS["contextTurns"]
     chatModel: str | None = _DEFAULTS["chatModel"]
     temperature: float = _DEFAULTS["temperature"]
     streaming: bool = _DEFAULTS["streaming"]

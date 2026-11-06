@@ -236,6 +236,45 @@ def ask(
         raise _wrap_openai_errors(exc)
 
 
+# Per-language output-script steering prompts for transcription. Whisper-family
+# models bias their output SCRIPT toward whatever script appears in `prompt`.
+# The classic failure this fixes: Hindi speech transcribed into Urdu (Arabic)
+# script because Hindi/Urdu are the same spoken language. A short Devanagari
+# sample pins Hindi (and Marathi) output to Devanagari. Extend as needed for
+# other script-ambiguous languages; absence just means "no steering".
+_SCRIPT_STEER_PROMPTS = {
+    "hi": "निम्नलिखित वार्तालाप हिंदी (देवनागरी लिपि) में लिखें।",
+    "mr": "खालील संवाद मराठी (देवनागरी लिपी) मध्ये लिहा.",
+    # Hinglish: transcribe the Hindi-English code-mixed speech in ROMAN/LATIN
+    # script, keeping the natural mix (do NOT convert to Devanagari or to pure
+    # English). The sample itself is Roman Hinglish to steer the output script.
+    "hing": ("Transcribe this Hindi-English code-mixed speech in Roman script, "
+             "e.g. 'yeh function kaise optimize karein aur iska time complexity "
+             "kya hai'."),
+}
+
+
+def _normalize_language_set_local(codes) -> list[str]:
+    """Best-effort normalize a list of language values to base codes, reusing
+    the shared registry normalizer when available (never raises)."""
+    out = []
+    try:
+        import interview_config as _ic
+        for c in (codes or []):
+            base = _ic.normalize_language(c, fallback=None) if hasattr(_ic, "normalize_language") else None
+            if base is None and c:
+                base = str(c).strip().lower().replace("_", "-").split("-")[0]
+            if base and base not in out:
+                out.append(base)
+    except Exception:  # noqa: BLE001
+        for c in (codes or []):
+            if c:
+                base = str(c).strip().lower().replace("_", "-").split("-")[0]
+                if base and base not in out:
+                    out.append(base)
+    return out
+
+
 def transcribe_detailed(
     audio_bytes: bytes,
     filename: str = "chunk.webm",
@@ -262,9 +301,35 @@ def transcribe_detailed(
     client = _get_client()
     import io
 
-    hint = None
+    # `sem_lang` is the SEMANTIC language we're steering toward (may be the
+    # pseudo-code "hing"). `hint` is the real ISO code we hand to STT's
+    # `language` param — which must be a genuine code, so Hinglish passes NO
+    # hard code (forcing "hi" would push Devanagari; we rely on the Roman
+    # steering prompt instead to keep the output in Latin script).
+    sem_lang = None
     if language and str(language).strip():
-        hint = str(language).strip().lower().split("-")[0]
+        sem_lang = str(language).strip().lower().replace("_", "-")
+        # Preserve the 4-letter "hing" pseudo-code; otherwise take the base.
+        sem_lang = sem_lang if sem_lang == "hing" else sem_lang.split("-")[0]
+
+    # When the caller gave no single semantic language but the candidate set
+    # points unambiguously at one script-sensitive language, steer by that.
+    if sem_lang is None and candidate_languages:
+        norm = _normalize_language_set_local(candidate_languages)
+        if "hing" in norm:
+            sem_lang = "hing"              # code-mixed, Roman script
+        elif "hi" in norm and "ur" not in norm:
+            sem_lang = "hi"               # Hindi, Devanagari
+
+    # The real ISO code passed to STT: Hinglish -> none (don't force Devanagari);
+    # any other pseudo-handling maps here. A normal code passes through.
+    hint = None if sem_lang in (None, "hing") else sem_lang
+
+    # Script-steering prompt: a short sample in the target script nudges the
+    # model to emit that script. Fixes Hindi->Urdu (Arabic) script drift, and
+    # keeps Hinglish in Roman/Latin. The `language` code biases detection but
+    # does NOT control output script; the prompt does.
+    steer_prompt = _SCRIPT_STEER_PROMPTS.get(sem_lang)
 
     # First attempt: verbose_json so we can read back a detected language.
     try:
@@ -274,6 +339,8 @@ def transcribe_detailed(
                         "response_format": "verbose_json"}
         if hint:
             kwargs["language"] = hint
+        if steer_prompt:
+            kwargs["prompt"] = steer_prompt
         resp = client.audio.transcriptions.create(**kwargs)
         text = (getattr(resp, "text", "") or "").strip()
         detected = getattr(resp, "language", None)
@@ -294,6 +361,8 @@ def transcribe_detailed(
         kwargs = {"model": model or TRANSCRIBE_MODEL, "file": buf}
         if hint:
             kwargs["language"] = hint
+        if steer_prompt:
+            kwargs["prompt"] = steer_prompt
         resp = client.audio.transcriptions.create(**kwargs)
         return (getattr(resp, "text", "") or "").strip(), None
     except AIError:
@@ -343,10 +412,12 @@ def transcribe(audio_bytes: bytes, filename: str = "chunk.webm", model: str | No
 
 # System prompt for the tiny, set-constrained language classifier.
 _DETECT_LANGUAGE_SYSTEM_PROMPT = (
-    "You identify the language of a short transcript. Respond with ONLY the "
-    "ISO 639-1 base code of the language, chosen strictly from this allowed "
-    "set: {codes}. If you are unsure, return {default}. Output nothing but the "
-    "two-letter code."
+    "You identify the language of a short transcript. Respond with ONLY a "
+    "language code chosen strictly from this allowed set: {codes}. "
+    "The code 'hing' means Hinglish — Hindi and English mixed together in one "
+    "utterance (often in Roman script), e.g. 'yeh approach scalable hai kya'; "
+    "prefer 'hing' over 'hi' or 'en' when the speech clearly mixes both. "
+    "If you are unsure, return {default}. Output nothing but the code."
 )
 
 
@@ -380,8 +451,9 @@ def detect_language(text: str, candidate_languages: list[str], model: str | None
         return default
     base = raw.replace("_", "-").split("-")[0].strip()
     # Keep only the first token of letters (the model may add stray words).
+    # Allow up to 4 letters so the "hing" (Hinglish) pseudo-code survives.
     import re as _re
-    m = _re.search(r"[a-z]{2,3}", base)
+    m = _re.search(r"[a-z]{2,4}", base)
     code = m.group(0) if m else ""
     return code if code in allowed else default
 
@@ -490,12 +562,29 @@ LANGUAGE_NAMES = _language_names()
 DEFAULT_ANSWER_LANGUAGE = os.environ.get("INTERVIEW_DEFAULT_LANGUAGE", "en").split("-")[0].lower()
 
 
+# Per-code overrides for the answer-language directive, where the generic
+# "respond in <Name>" wording isn't precise enough (e.g. Hinglish needs the
+# code-mixed, Roman-script style spelled out).
+_ANSWER_LANGUAGE_DIRECTIVES = {
+    "hing": (
+        "- Respond in Hinglish: natural Hindi-English code-mixing written in "
+        "Roman/Latin script (NOT Devanagari, NOT pure English), the same "
+        "conversational style the interviewer used, e.g. \"Dekho, is problem "
+        "ko hum hashmap se solve kar sakte hain, time complexity O(n) rahegi.\" "
+        "Keep technical terms in English as a natural speaker would."
+    ),
+}
+
+
 def language_instruction(language: str | None) -> str:
     """Return a one-line instruction pinning the answer language (English by
     default). Unknown/empty values fall back to English — we never silently
     switch to an unsupported language. This is the shared source of the
     answer-language directive string (reused by server.py's /api/ask path)."""
-    code = (language or DEFAULT_ANSWER_LANGUAGE or "en").strip().lower().split("-")[0]
+    raw = (language or DEFAULT_ANSWER_LANGUAGE or "en").strip().lower().replace("_", "-")
+    code = raw if raw == "hing" else raw.split("-")[0]
+    if code in _ANSWER_LANGUAGE_DIRECTIVES:
+        return _ANSWER_LANGUAGE_DIRECTIVES[code]
     name = _language_names().get(code, "English")
     return (f"- Always respond in {name}, regardless of the input language. "
             "Match the language of the interviewer's question exactly.")
