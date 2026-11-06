@@ -2577,3 +2577,233 @@
 [2026-10-01 20:26:36] [INFO] Signal 2 — shutting down.
 [2026-10-01 20:26:36] [INFO] Signal 15 — shutting down.
 [2026-10-01 20:26:36] [INFO] Daemon stopped.
+[2026-11-06 17:11:18] [INFO] ============================================================
+[2026-11-06 17:11:18] [INFO] silent-screenshot-daemon starting
+[2026-11-06 17:11:18] [INFO] Config: trigger='C' x4 within 2000ms
+[2026-11-06 17:11:18] [INFO] Quit:   'Q' x4 within 2000ms
+[2026-11-06 17:11:18] [INFO] Output: /Users/pranay/Desktop/Pranay/Projects/In-Queue/screen_shot/screenshots
+[2026-11-06 17:11:18] [INFO] PID: 19700 | Python 3.12.15 | Darwin
+[2026-11-06 17:11:18] [INFO] Global key listener active. Waiting for trigger sequence…
+[2026-11-06 17:11:31] [INFO] Signal 2 — shutting down.
+[2026-11-06 17:11:31] [INFO] Daemon stopped.
+[2026-11-06 17:13:14] [INFO] ============================================================
+[2026-11-06 17:13:14] [INFO] silent-screenshot-daemon starting
+[2026-11-06 17:13:14] [INFO] Config: trigger='C' x4 within 2000ms
+[2026-11-06 17:13:14] [INFO] Quit:   'Q' x4 within 2000ms
+[2026-11-06 17:13:14] [INFO] Output: /Users/pranay/Desktop/Pranay/Projects/In-Queue/screen_shot/screenshots
+[2026-11-06 17:13:14] [INFO] PID: 20097 | Python 3.12.15 | Darwin
+[2026-11-06 17:13:14] [INFO] Global key listener active. Waiting for trigger sequence…
+[2026-11-06 17:13:41] [DEBUG] Key 'C' press 1/4
+[2026-11-06 17:13:41] [DEBUG] Key 'C' press 2/4
+[2026-11-06 17:13:41] [DEBUG] Key 'C' press 3/4
+[2026-11-06 17:13:41] [DEBUG] Key 'C' press 4/4
+[2026-11-06 17:13:41] [INFO] Trigger detected — saving to: /Users/pranay/Desktop/Pranay/Projects/In-Queue/screen_shot/screenshots/2026-11-06/screenshot-2026-11-06T17-13-41-661210.png
+[2026-11-06 17:13:41] [ERROR] Screenshot error: module 'mss' has no attribute 'MSS'
+Traceback (most recent call last):
+  File "/Users/pranay/Desktop/Pranay/Projects/In-Queue/screen_shot/daemon.py", line 167, in take_screenshot
+    _capture_macos(out_path, log)
+  File "/Users/pranay/Desktop/Pranay/Projects/In-Queue/screen_shot/daemon.py", line 145, in _capture_macos
+    _capture_with_mss(out_path, log)
+  File "/Users/pranay/Desktop/Pranay/Projects/In-Queue/screen_shot/daemon.py", line 132, in _capture_with_mss
+    with mss.MSS() as sct:
+         ^^^^^^^
+AttributeError: module 'mss' has no attribute 'MSS'
+[2026-11-06 17:13:55] [DEBUG] Key 'C' press 1/4
+[2026-11-06 17:13:55] [DEBUG] Key 'C' press 2/4
+[2026-11-06 17:13:56] [DEBUG] Key 'C' press 3/4
+[2026-11-06 17:13:56] [DEBUG] Key 'C' press 4/4
+[2026-11-06 17:13:56] [INFO] Trigger detected — saving to: /Users/pranay/Desktop/Pranay/Projects/In-Queue/screen_shot/screenshots/2026-11-06/screenshot-2026-11-06T17-13-56-216901.png
+[2026-11-06 17:13:56] [ERROR] Screenshot error: module 'mss' has no attribute 'MSS'
+Traceback (most recent call last):
+  File "/Users/pranay/Desktop/Pranay/Projects/In-Queue/screen_shot/daemon.py", line 167, in take_screenshot
+    _capture_macos(out_path, log)
+  File "/Users/pranay/Desktop/Pranay/Projects/In-Queue/screen_shot/daemon.py", line 145, in _capture_macos
+    _capture_with_mss(out_path, log)
+  File "/Users/pranay/Desktop/Pranay/Projects/In-Queue/screen_shot/daemon.py", line 132, in _capture_with_mss
+    with mss.MSS() as sct:
+         ^^^^^^^
+AttributeError: module 'mss' has no attribute 'MSS'
+[2026-11-06 17:14:06] [DEBUG] Key 'C' press 1/4
+[2026-11-06 17:14:07] [DEBUG] Key 'C' press 2/4
+[2026-11-06 17:14:22] [DEBUG] Timeout (14546ms). Restarting counter.
+[2026-11-06 17:14:22] [DEBUG] Key 'C' press 1/4
+[2026-11-06 17:14:23] [DEBUG] Key 'C' press 2/4
+[2026-11-06 17:14:27] [DEBUG] Timeout (4103ms). Restarting counter.
+[2026-11-06 17:14:27] [DEBUG] Key 'C' press 1/4
+[2026-11-06 17:14:27] [INFO] Signal 2 — shutting down.
+[2026-11-06 17:14:27] [INFO] Daemon stopped.
+[2026-11-06 17:27:33] [INFO] ============================================================
+[2026-11-06 17:27:33] [INFO] silent-screenshot-daemon starting
+[2026-11-06 17:27:33] [INFO] Config: trigger='C' x4 within 2000ms
+[2026-11-06 17:27:33] [INFO] Quit:   'Q' x4 within 2000ms
+[2026-11-06 17:27:33] [INFO] Output: /Users/pranay/Desktop/Pranay/Projects/In-Queue/screen_shot/screenshots
+[2026-11-06 17:27:33] [INFO] PID: 26580 | Python 3.12.15 | Darwin
+[2026-11-06 17:27:33] [INFO] Global key listener active. Waiting for trigger sequence…
+[2026-11-06 17:27:59] [DEBUG] Key 'C' press 1/4
+[2026-11-06 17:27:59] [INFO] Signal 2 — shutting down.
+[2026-11-06 17:27:59] [INFO] Daemon stopped.
+[2026-11-06 17:30:02] [INFO] ============================================================
+[2026-11-06 17:30:02] [INFO] silent-screenshot-daemon starting
+[2026-11-06 17:30:02] [INFO] Config: trigger='C' x4 within 2000ms
+[2026-11-06 17:30:02] [INFO] Quit:   'Q' x4 within 2000ms
+[2026-11-06 17:30:02] [INFO] Output: /Users/pranay/Desktop/Pranay/Projects/In-Queue/screen_shot/screenshots
+[2026-11-06 17:30:02] [INFO] PID: 26824 | Python 3.12.15 | Darwin
+[2026-11-06 17:30:02] [INFO] Global key listener active. Waiting for trigger sequence…
+[2026-11-06 17:30:16] [DEBUG] Key 'C' press 1/4
+[2026-11-06 17:30:16] [DEBUG] Key 'C' press 2/4
+[2026-11-06 17:30:16] [DEBUG] Key 'C' press 3/4
+[2026-11-06 17:30:16] [DEBUG] Key 'C' press 4/4
+[2026-11-06 17:30:16] [INFO] Trigger detected — saving to: /Users/pranay/Desktop/Pranay/Projects/In-Queue/screen_shot/screenshots/2026-11-06/screenshot-2026-11-06T17-30-16-848090.png
+[2026-11-06 17:30:16] [ERROR] Screenshot error: module 'mss' has no attribute 'MSS'
+Traceback (most recent call last):
+  File "/Users/pranay/Desktop/Pranay/Projects/In-Queue/screen_shot/daemon.py", line 226, in take_screenshot
+    _capture_macos(out_path, log)
+  File "/Users/pranay/Desktop/Pranay/Projects/In-Queue/screen_shot/daemon.py", line 145, in _capture_macos
+    _capture_with_mss(out_path, log)
+  File "/Users/pranay/Desktop/Pranay/Projects/In-Queue/screen_shot/daemon.py", line 132, in _capture_with_mss
+    with mss.MSS() as sct:
+         ^^^^^^^
+AttributeError: module 'mss' has no attribute 'MSS'
+[2026-11-06 17:30:29] [DEBUG] Key 'C' press 1/4
+[2026-11-06 17:30:29] [DEBUG] Key 'C' press 2/4
+[2026-11-06 17:30:29] [DEBUG] Key 'C' press 3/4
+[2026-11-06 17:30:30] [DEBUG] Key 'C' press 4/4
+[2026-11-06 17:30:30] [INFO] Trigger detected — saving to: /Users/pranay/Desktop/Pranay/Projects/In-Queue/screen_shot/screenshots/2026-11-06/screenshot-2026-11-06T17-30-30-129239.png
+[2026-11-06 17:30:30] [ERROR] Screenshot error: module 'mss' has no attribute 'MSS'
+Traceback (most recent call last):
+  File "/Users/pranay/Desktop/Pranay/Projects/In-Queue/screen_shot/daemon.py", line 226, in take_screenshot
+    _capture_macos(out_path, log)
+  File "/Users/pranay/Desktop/Pranay/Projects/In-Queue/screen_shot/daemon.py", line 145, in _capture_macos
+    _capture_with_mss(out_path, log)
+  File "/Users/pranay/Desktop/Pranay/Projects/In-Queue/screen_shot/daemon.py", line 132, in _capture_with_mss
+    with mss.MSS() as sct:
+         ^^^^^^^
+AttributeError: module 'mss' has no attribute 'MSS'
+[2026-11-06 17:30:59] [DEBUG] Key 'C' press 1/4
+[2026-11-06 17:30:59] [DEBUG] Key 'C' press 2/4
+[2026-11-06 17:31:12] [DEBUG] Timeout (12388ms). Restarting counter.
+[2026-11-06 17:31:12] [DEBUG] Key 'C' press 1/4
+[2026-11-06 17:31:20] [DEBUG] Timeout (8627ms). Restarting counter.
+[2026-11-06 17:31:20] [DEBUG] Key 'C' press 1/4
+[2026-11-06 17:31:35] [DEBUG] Timeout (14367ms). Restarting counter.
+[2026-11-06 17:31:35] [DEBUG] Key 'C' press 1/4
+[2026-11-06 17:31:45] [DEBUG] Timeout (10419ms). Restarting counter.
+[2026-11-06 17:31:45] [DEBUG] Key 'C' press 1/4
+[2026-11-06 17:31:45] [DEBUG] Key 'C' press 2/4
+[2026-11-06 17:31:45] [DEBUG] Key 'C' press 3/4
+[2026-11-06 17:31:45] [DEBUG] Key 'C' press 4/4
+[2026-11-06 17:31:45] [INFO] Trigger detected — saving to: /Users/pranay/Desktop/Pranay/Projects/In-Queue/screen_shot/screenshots/2026-11-06/screenshot-2026-11-06T17-31-45-900513.png
+[2026-11-06 17:31:45] [ERROR] Screenshot error: module 'mss' has no attribute 'MSS'
+Traceback (most recent call last):
+  File "/Users/pranay/Desktop/Pranay/Projects/In-Queue/screen_shot/daemon.py", line 226, in take_screenshot
+    _capture_macos(out_path, log)
+  File "/Users/pranay/Desktop/Pranay/Projects/In-Queue/screen_shot/daemon.py", line 145, in _capture_macos
+    _capture_with_mss(out_path, log)
+  File "/Users/pranay/Desktop/Pranay/Projects/In-Queue/screen_shot/daemon.py", line 132, in _capture_with_mss
+    with mss.MSS() as sct:
+         ^^^^^^^
+AttributeError: module 'mss' has no attribute 'MSS'
+[2026-11-06 17:33:27] [DEBUG] Key 'C' press 1/4
+[2026-11-06 17:33:31] [DEBUG] Timeout (4371ms). Restarting counter.
+[2026-11-06 17:33:31] [DEBUG] Key 'C' press 1/4
+[2026-11-06 17:33:35] [DEBUG] Timeout (3297ms). Restarting counter.
+[2026-11-06 17:33:35] [DEBUG] Key 'C' press 1/4
+[2026-11-06 17:37:51] [DEBUG] Timeout (256889ms). Restarting counter.
+[2026-11-06 17:37:51] [DEBUG] Key 'C' press 1/4
+[2026-11-06 17:37:51] [INFO] Signal 2 — shutting down.
+[2026-11-06 17:37:51] [INFO] Daemon stopped.
+[2026-11-06 17:38:09] [INFO] ============================================================
+[2026-11-06 17:38:09] [INFO] silent-screenshot-daemon starting
+[2026-11-06 17:38:09] [INFO] Config: trigger='C' x4 within 2000ms
+[2026-11-06 17:38:09] [INFO] Quit:   'Q' x4 within 2000ms
+[2026-11-06 17:38:09] [INFO] Output: /Users/pranay/Desktop/Pranay/Projects/In-Queue/screen_shot/screenshots
+[2026-11-06 17:38:09] [INFO] PID: 29173 | Python 3.12.15 | Darwin
+[2026-11-06 17:38:09] [INFO] Global key listener active. Waiting for trigger sequence…
+[2026-11-06 17:38:27] [DEBUG] Key 'C' press 1/4
+[2026-11-06 17:38:28] [DEBUG] Key 'C' press 2/4
+[2026-11-06 17:38:28] [DEBUG] Key 'C' press 3/4
+[2026-11-06 17:38:28] [DEBUG] Key 'C' press 4/4
+[2026-11-06 17:38:28] [INFO] Trigger detected — saving to: /Users/pranay/Desktop/Pranay/Projects/In-Queue/screen_shot/screenshots/2026-11-06/screenshot-2026-11-06T17-38-28-432251.png
+[2026-11-06 17:38:28] [INFO] Screenshot saved: /Users/pranay/Desktop/Pranay/Projects/In-Queue/screen_shot/screenshots/2026-11-06/screenshot-2026-11-06T17-38-28-432251.png  (412 KB)
+[2026-11-06 17:38:46] [WARNING] Screenshot registration failed (screenshot is still saved to disk): Remote end closed connection without response
+[2026-11-06 17:38:54] [DEBUG] Key 'C' press 1/4
+[2026-11-06 17:38:54] [DEBUG] Key 'C' press 2/4
+[2026-11-06 17:39:05] [DEBUG] Timeout (10676ms). Restarting counter.
+[2026-11-06 17:39:05] [DEBUG] Key 'C' press 1/4
+[2026-11-06 17:39:10] [DEBUG] Timeout (5277ms). Restarting counter.
+[2026-11-06 17:39:10] [DEBUG] Key 'C' press 1/4
+[2026-11-06 17:39:10] [INFO] Signal 2 — shutting down.
+[2026-11-06 17:39:10] [INFO] Daemon stopped.
+[2026-11-06 17:55:47] [INFO] ============================================================
+[2026-11-06 17:55:47] [INFO] silent-screenshot-daemon starting
+[2026-11-06 17:55:47] [INFO] Config: trigger='C' x4 within 2000ms
+[2026-11-06 17:55:47] [INFO] Quit:   'Q' x4 within 2000ms
+[2026-11-06 17:55:47] [INFO] Output: /Users/pranay/Desktop/Pranay/Projects/In-Queue/screen_shot/screenshots
+[2026-11-06 17:55:47] [INFO] PID: 33669 | Python 3.12.15 | Darwin
+[2026-11-06 17:55:47] [INFO] Global key listener active. Waiting for trigger sequence…
+[2026-11-06 17:58:14] [DEBUG] Key 'C' press 1/4
+[2026-11-06 17:58:15] [DEBUG] Key 'C' press 2/4
+[2026-11-06 17:58:50] [DEBUG] Key 'Q' press 1/4
+[2026-11-06 17:58:58] [DEBUG] Timeout (8098ms). Restarting counter.
+[2026-11-06 17:58:58] [DEBUG] Key 'Q' press 1/4
+[2026-11-06 17:59:02] [DEBUG] Timeout (4373ms). Restarting counter.
+[2026-11-06 17:59:02] [DEBUG] Key 'Q' press 1/4
+[2026-11-06 17:59:14] [DEBUG] Timeout (12052ms). Restarting counter.
+[2026-11-06 17:59:14] [DEBUG] Key 'Q' press 1/4
+[2026-11-06 17:59:17] [DEBUG] Timeout (61825ms). Restarting counter.
+[2026-11-06 17:59:17] [DEBUG] Key 'C' press 1/4
+[2026-11-06 18:02:29] [DEBUG] Timeout (192238ms). Restarting counter.
+[2026-11-06 18:02:29] [DEBUG] Key 'C' press 1/4
+[2026-11-06 18:02:29] [INFO] Signal 2 — shutting down.
+[2026-11-06 18:02:29] [INFO] Daemon stopped.
+[2026-11-06 18:02:46] [INFO] ============================================================
+[2026-11-06 18:02:46] [INFO] silent-screenshot-daemon starting
+[2026-11-06 18:02:46] [INFO] Config: trigger='C' x4 within 2000ms
+[2026-11-06 18:02:46] [INFO] Quit:   'Q' x4 within 2000ms
+[2026-11-06 18:02:46] [INFO] Output: /Users/pranay/Desktop/Pranay/Projects/In-Queue/screen_shot/screenshots
+[2026-11-06 18:02:46] [INFO] PID: 34228 | Python 3.12.15 | Darwin
+[2026-11-06 18:02:46] [INFO] Global key listener active. Waiting for trigger sequence…
+[2026-11-06 18:04:22] [DEBUG] Key 'C' press 1/4
+[2026-11-06 18:04:22] [DEBUG] Key 'C' press 2/4
+[2026-11-06 18:04:22] [DEBUG] Key 'C' press 3/4
+[2026-11-06 18:04:23] [DEBUG] Key 'C' press 4/4
+[2026-11-06 18:04:23] [INFO] Trigger detected — saving to: /Users/pranay/Desktop/Pranay/Projects/In-Queue/screen_shot/screenshots/2026-11-06/screenshot-2026-11-06T18-04-23-015690.png
+[2026-11-06 18:04:23] [INFO] Screenshot saved: /Users/pranay/Desktop/Pranay/Projects/In-Queue/screen_shot/screenshots/2026-11-06/screenshot-2026-11-06T18-04-23-015690.png  (535 KB)
+[2026-11-06 18:04:38] [WARNING] Screenshot registration failed (screenshot is still saved to disk): Remote end closed connection without response
+[2026-11-06 18:07:53] [DEBUG] Key 'C' press 1/4
+[2026-11-06 18:07:54] [DEBUG] Key 'Q' press 1/4
+[2026-11-06 18:08:13] [DEBUG] Timeout (19928ms). Restarting counter.
+[2026-11-06 18:08:13] [DEBUG] Key 'C' press 1/4
+[2026-11-06 18:08:14] [DEBUG] Key 'C' press 2/4
+[2026-11-06 18:08:14] [DEBUG] Key 'C' press 3/4
+[2026-11-06 18:08:14] [DEBUG] Key 'C' press 4/4
+[2026-11-06 18:08:14] [INFO] Trigger detected — saving to: /Users/pranay/Desktop/Pranay/Projects/In-Queue/screen_shot/screenshots/2026-11-06/screenshot-2026-11-06T18-08-14-241345.png
+[2026-11-06 18:08:14] [INFO] Screenshot saved: /Users/pranay/Desktop/Pranay/Projects/In-Queue/screen_shot/screenshots/2026-11-06/screenshot-2026-11-06T18-08-14-241345.png  (268 KB)
+[2026-11-06 18:08:23] [WARNING] Screenshot registration failed (screenshot is still saved to disk): Remote end closed connection without response
+[2026-11-06 18:09:19] [DEBUG] Key 'C' press 1/4
+[2026-11-06 18:10:04] [DEBUG] Timeout (45130ms). Restarting counter.
+[2026-11-06 18:10:04] [DEBUG] Key 'C' press 1/4
+[2026-11-06 18:10:08] [DEBUG] Timeout (3731ms). Restarting counter.
+[2026-11-06 18:10:08] [DEBUG] Key 'C' press 1/4
+[2026-11-06 18:10:18] [DEBUG] Timeout (9536ms). Restarting counter.
+[2026-11-06 18:10:18] [DEBUG] Key 'C' press 1/4
+[2026-11-06 18:10:18] [DEBUG] Key 'C' press 2/4
+[2026-11-06 18:10:27] [DEBUG] Timeout (8901ms). Restarting counter.
+[2026-11-06 18:10:27] [DEBUG] Key 'C' press 1/4
+[2026-11-06 18:12:30] [DEBUG] Timeout (122862ms). Restarting counter.
+[2026-11-06 18:12:30] [DEBUG] Key 'C' press 1/4
+[2026-11-06 18:12:31] [DEBUG] Key 'C' press 2/4
+[2026-11-06 18:14:49] [DEBUG] Timeout (138331ms). Restarting counter.
+[2026-11-06 18:14:49] [DEBUG] Key 'C' press 1/4
+[2026-11-06 18:14:51] [DEBUG] Timeout (2238ms). Restarting counter.
+[2026-11-06 18:14:51] [DEBUG] Key 'C' press 1/4
+[2026-11-06 18:20:01] [DEBUG] Timeout (309952ms). Restarting counter.
+[2026-11-06 18:20:01] [DEBUG] Key 'C' press 1/4
+[2026-11-06 18:20:05] [DEBUG] Timeout (3675ms). Restarting counter.
+[2026-11-06 18:20:05] [DEBUG] Key 'C' press 1/4
+[2026-11-06 18:20:17] [DEBUG] Timeout (12198ms). Restarting counter.
+[2026-11-06 18:20:17] [DEBUG] Key 'C' press 1/4
+[2026-11-06 18:20:26] [DEBUG] Timeout (9088ms). Restarting counter.
+[2026-11-06 18:20:26] [DEBUG] Key 'C' press 1/4
+[2026-11-06 18:23:25] [DEBUG] Timeout (178418ms). Restarting counter.
+[2026-11-06 18:23:25] [DEBUG] Key 'C' press 1/4

@@ -129,7 +129,9 @@ def _capture_with_mss(out_path: Path, log: logging.Logger):
     import mss
     import mss.tools
 
-    with mss.MSS() as sct:
+    # The mss entry point is lowercase `mss.mss()` (not `mss.MSS()` — that name
+    # doesn't exist and raises AttributeError, which silently broke capture).
+    with mss.mss() as sct:
         monitor = sct.monitors[0]   # index 0 = all displays combined
         raw = sct.grab(monitor)
         mss.tools.to_png(raw.rgb, raw.size, output=str(out_path))
@@ -159,9 +161,68 @@ def _capture_linux(out_path: Path, log: logging.Logger):
     _capture_with_mss(out_path, log)
 
 
+# Backend base URL — same default as the overlay (override with env for a
+# custom port, e.g. BACKEND_PORT=3737). The daemon registers each capture here
+# so it becomes a record and appears in the overlay app's Gallery (OCR'd like
+# the overlay's own captures). Stdlib-only (urllib) so the daemon keeps zero
+# extra dependencies.
+_BACKEND_HOST = os.environ.get("BACKEND_HOST", "localhost")
+_BACKEND_PORT = os.environ.get("BACKEND_PORT", "3000")
+_BACKEND_URL = f"http://{_BACKEND_HOST}:{_BACKEND_PORT}"
+
+
+def _register_with_backend(out_path: Path, log: logging.Logger) -> None:
+    """
+    POST the just-captured PNG to the backend's /api/ocr-only so it becomes a
+    record (and is OCR'd) and shows up in the overlay Gallery.
+
+    FAIL-SOFT: any error (backend down, timeout, bad response) is logged at
+    WARNING and swallowed — the screenshot is already safely on disk, and a
+    registration failure must NEVER break capture.
+    """
+    import base64
+    import json
+    import urllib.request
+    import urllib.error
+
+    try:
+        with open(out_path, "rb") as f:
+            raw = f.read()
+        data_url = "data:image/png;base64," + base64.b64encode(raw).decode("ascii")
+        body = json.dumps({
+            "image": data_url,
+            "source_type": "screenshot-full",   # daemon captures the full screen
+        }).encode("utf-8")
+        req = urllib.request.Request(
+            f"{_BACKEND_URL}/api/ocr-only",
+            data=body,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        # The backend creates the record up front (status 'captured') and then
+        # OCRs it; the record appears in the Gallery immediately, OCR text fills
+        # in shortly after. We allow a generous window for the response, but run
+        # on a background thread (see SequenceDetector) so this never blocks key
+        # detection. A timeout here does NOT mean failure — the record is
+        # typically already created server-side.
+        with urllib.request.urlopen(req, timeout=60) as resp:
+            payload = json.loads(resp.read().decode("utf-8"))
+        if payload.get("success"):
+            log.info(f"Registered with backend as record {payload.get('record_id')} "
+                     f"(now visible in the overlay Gallery).")
+        else:
+            log.warning(f"Backend did not register the screenshot: {payload.get('error')}")
+    except urllib.error.URLError as e:
+        log.warning(f"Could not reach backend at {_BACKEND_URL} to register screenshot "
+                    f"(is server.py running?): {e}")
+    except Exception as e:  # noqa: BLE001 — registration must never break capture
+        log.warning(f"Screenshot registration failed (screenshot is still saved to disk): {e}")
+
+
 def take_screenshot(output_dir: str, log: logging.Logger) -> None:
     out_path = _build_output_path(output_dir)
     log.info(f"Trigger detected — saving to: {out_path}")
+    captured = False
     try:
         if PLATFORM == "Darwin":
             _capture_macos(out_path, log)
@@ -169,10 +230,16 @@ def take_screenshot(output_dir: str, log: logging.Logger) -> None:
             _capture_windows(out_path, log)
         else:
             _capture_linux(out_path, log)
+        captured = out_path.exists()
     except subprocess.TimeoutExpired:
         log.error("Capture timed out after 10s")
     except Exception as e:
         log.error(f"Screenshot error: {e}", exc_info=True)
+
+    # Register with the backend so it appears in the overlay Gallery. Done after
+    # the file is safely written; failure here never affects the saved capture.
+    if captured:
+        _register_with_backend(out_path, log)
 
 
 # ── Sequence detector ─────────────────────────────────────────────────────────
