@@ -2807,3 +2807,225 @@ AttributeError: module 'mss' has no attribute 'MSS'
 [2026-11-06 18:20:26] [DEBUG] Key 'C' press 1/4
 [2026-11-06 18:23:25] [DEBUG] Timeout (178418ms). Restarting counter.
 [2026-11-06 18:23:25] [DEBUG] Key 'C' press 1/4
+[2026-11-06 18:24:28] [DEBUG] Timeout (63476ms). Restarting counter.
+[2026-11-06 18:24:28] [DEBUG] Key 'C' press 1/4
+[2026-11-06 18:24:33] [DEBUG] Timeout (4556ms). Restarting counter.
+[2026-11-06 18:24:33] [DEBUG] Key 'C' press 1/4
+[2026-11-06 18:47:31] [DEBUG] Timeout (781848ms). Restarting counter.
+[2026-11-06 18:47:31] [DEBUG] Key 'C' press 1/4
+[2026-11-06 18:47:31] [DEBUG] Key 'C' press 2/4
+[2026-11-06 18:47:42] [DEBUG] Timeout (11367ms). Restarting counter.
+[2026-11-06 18:47:42] [DEBUG] Key 'C' press 1/4
+[2026-11-06 18:47:44] [DEBUG] Key 'C' press 2/4
+[2026-11-06 18:47:48] [DEBUG] Timeout (3528ms). Restarting counter.
+[2026-11-06 18:47:48] [DEBUG] Key 'C' press 1/4
+[2026-11-06 18:47:48] [DEBUG] Key 'C' press 2/4
+[2026-11-06 18:47:52] [DEBUG] Timeout (3782ms). Restarting counter.
+[2026-11-06 18:47:52] [DEBUG] Key 'C' press 1/4
+[2026-11-06 18:47:52] [INFO] Signal 2 — shutting down.
+[2026-11-06 18:47:52] [INFO] Daemon stopped.
+[2026-11-06 18:48:01] [INFO] ============================================================
+[2026-11-06 18:48:01] [INFO] silent-screenshot-daemon starting
+[2026-11-06 18:48:01] [INFO] Config: trigger='C' x4 within 2000ms
+[2026-11-06 18:48:01] [INFO] Quit:   'Q' x4 within 2000ms
+[2026-11-06 18:48:01] [INFO] Output: /Users/pranay/Desktop/Pranay/Projects/In-Queue/screen_shot/screenshots
+[2026-11-06 18:48:01] [INFO] PID: 42108 | Python 3.12.15 | Darwin
+[2026-11-06 18:48:01] [INFO] Global key listener active. Waiting for trigger sequence…
+[2026-11-06 18:51:10] [DEBUG] Key 'C' press 1/4
+[2026-11-06 18:51:12] [DEBUG] Key 'C' press 2/4
+[2026-11-06 18:51:15] [DEBUG] Timeout (3280ms). Restarting counter.
+[2026-11-06 18:51:15] [DEBUG] Key 'C' press 1/4
+[2026-11-06 18:53:50] [DEBUG] Timeout (154608ms). Restarting counter.
+[2026-11-06 18:53:50] [DEBUG] Key 'C' press 1/4
+[2026-11-06 18:53:55] [DEBUG] Timeout (5301ms). Restarting counter.
+[2026-11-06 18:53:55] [DEBUG] Key 'C' press 1/4
+[2026-11-06 18:57:39] [DEBUG] Timeout (224187ms). Restarting counter.
+[2026-11-06 18:57:39] [DEBUG] Key 'C' press 1/4
+[2026-11-06 18:57:45] [DEBUG] Timeout (5758ms). Restarting counter.
+[2026-11-06 18:57:45] [DEBUG] Key 'C' press 1/4
+[2026-11-06 18:57:47] [DEBUG] Timeout (2231ms). Restarting counter.
+[2026-11-06 18:57:47] [DEBUG] Key 'C' press 1/4
+[2026-11-06 18:57:49] [DEBUG] Key 'C' press 2/4
+[2026-11-06 19:12:43] [DEBUG] Timeout (894269ms). Restarting counter.
+[2026-11-06 19:12:43] [DEBUG] Key 'C' press 1/4
+[2026-11-06 19:12:54] [DEBUG] Timeout (10370ms). Restarting counter.
+[2026-11-06 19:12:54] [DEBUG] Key 'C' press 1/4
+[2026-11-06 19:33:14] [DEBUG] Timeout (1220287ms). Restarting counter.
+[2026-11-06 19:33:14] [DEBUG] Key 'C' press 1/4
+[2026-11-07 11:08:50] [DEBUG] Timeout (8217727ms). Restarting counter.
+[2026-11-07 11:08:50] [DEBUG] Key 'C' press 1/4
+[2026-11-07 11:09:03] [DEBUG] Timeout (13299ms). Restarting counter.
+[2026-11-07 11:09:03] [DEBUG] Key 'C' press 1/4
+[2026-11-07 11:09:04] [DEBUG] Key 'C' press 2/4
+[2026-11-07 11:10:33] [DEBUG] Timeout (89115ms). Restarting counter.
+[2026-11-07 11:10:33] [DEBUG] Key 'C' press 1/4
+[2026-11-07 11:10:34] [DEBUG] Key 'C' press 2/4
+[2026-11-07 11:10:52] [DEBUG] Timeout (18689ms). Restarting counter.
+[2026-11-07 11:10:52] [DEBUG] Key 'C' press 1/4
+[2026-11-07 11:11:29] [DEBUG] Timeout (36785ms). Restarting counter.
+[2026-11-07 11:11:29] [DEBUG] Key 'C' press 1/4
+[2026-11-07 11:12:09] [DEBUG] Timeout (39692ms). Restarting counter.
+[2026-11-07 11:12:09] [DEBUG] Key 'C' press 1/4
+[2026-11-07 11:12:10] [DEBUG] Key 'C' press 2/4
+[2026-11-07 11:12:25] [DEBUG] Timeout (14969ms). Restarting counter.
+[2026-11-07 11:12:25] [DEBUG] Key 'C' press 1/4
+[2026-11-07 11:12:27] [DEBUG] Timeout (2723ms). Restarting counter.
+[2026-11-07 11:12:27] [DEBUG] Key 'C' press 1/4
+[2026-11-07 11:12:28] [DEBUG] Key 'C' press 2/4
+[2026-11-07 11:12:32] [DEBUG] Timeout (3659ms). Restarting counter.
+[2026-11-07 11:12:32] [DEBUG] Key 'C' press 1/4
+[2026-11-07 11:12:55] [DEBUG] Timeout (22924ms). Restarting counter.
+[2026-11-07 11:12:55] [DEBUG] Key 'C' press 1/4
+[2026-11-07 11:13:10] [DEBUG] Timeout (14846ms). Restarting counter.
+[2026-11-07 11:13:10] [DEBUG] Key 'C' press 1/4
+[2026-11-07 11:13:25] [DEBUG] Timeout (15244ms). Restarting counter.
+[2026-11-07 11:13:25] [DEBUG] Key 'C' press 1/4
+[2026-11-07 11:13:26] [DEBUG] Key 'C' press 2/4
+[2026-11-07 12:06:12] [DEBUG] Timeout (965444ms). Restarting counter.
+[2026-11-07 12:06:12] [DEBUG] Key 'C' press 1/4
+[2026-11-07 12:06:18] [DEBUG] Timeout (5312ms). Restarting counter.
+[2026-11-07 12:06:18] [DEBUG] Key 'C' press 1/4
+[2026-11-07 12:06:20] [DEBUG] Key 'C' press 2/4
+[2026-11-07 12:28:25] [DEBUG] Timeout (1325533ms). Restarting counter.
+[2026-11-07 12:28:25] [DEBUG] Key 'C' press 1/4
+[2026-11-07 12:28:26] [DEBUG] Key 'C' press 2/4
+[2026-11-07 12:28:33] [DEBUG] Timeout (7122ms). Restarting counter.
+[2026-11-07 12:28:33] [DEBUG] Key 'C' press 1/4
+[2026-11-07 12:28:35] [DEBUG] Key 'C' press 2/4
+[2026-11-07 12:28:40] [DEBUG] Timeout (4738ms). Restarting counter.
+[2026-11-07 12:28:40] [DEBUG] Key 'C' press 1/4
+[2026-11-07 12:28:40] [INFO] Signal 2 — shutting down.
+[2026-11-07 12:28:40] [INFO] Daemon stopped.
+[2026-11-07 12:59:22] [INFO] ============================================================
+[2026-11-07 12:59:22] [INFO] silent-screenshot-daemon starting
+[2026-11-07 12:59:22] [INFO] Config: trigger='C' x4 within 2000ms
+[2026-11-07 12:59:22] [INFO] Quit:   'Q' x4 within 2000ms
+[2026-11-07 12:59:22] [INFO] Output: /Users/pranay/Desktop/Pranay/Projects/In-Queue/screen_shot/screenshots
+[2026-11-07 12:59:22] [INFO] PID: 5384 | Python 3.12.15 | Darwin
+[2026-11-07 12:59:22] [INFO] Global key listener active. Waiting for trigger sequence…
+[2026-11-07 13:00:03] [DEBUG] Key 'C' press 1/4
+[2026-11-07 13:00:03] [DEBUG] Key 'C' press 2/4
+[2026-11-07 13:00:03] [DEBUG] Key 'C' press 3/4
+[2026-11-07 13:00:03] [DEBUG] Key 'C' press 4/4
+[2026-11-07 13:00:03] [INFO] Trigger detected — saving to: /Users/pranay/Desktop/Pranay/Projects/In-Queue/screen_shot/screenshots/2026-11-07/screenshot-2026-11-07T13-00-03-620261.png
+[2026-11-07 13:00:03] [INFO] Screenshot saved: /Users/pranay/Desktop/Pranay/Projects/In-Queue/screen_shot/screenshots/2026-11-07/screenshot-2026-11-07T13-00-03-620261.png  (288 KB)
+[2026-11-07 13:00:13] [DEBUG] Key 'C' press 1/4
+[2026-11-07 13:00:13] [DEBUG] Key 'C' press 2/4
+[2026-11-07 13:00:13] [DEBUG] Key 'C' press 3/4
+[2026-11-07 13:00:13] [DEBUG] Key 'C' press 4/4
+[2026-11-07 13:00:13] [INFO] Trigger detected — saving to: /Users/pranay/Desktop/Pranay/Projects/In-Queue/screen_shot/screenshots/2026-11-07/screenshot-2026-11-07T13-00-13-801871.png
+[2026-11-07 13:00:13] [INFO] Screenshot saved: /Users/pranay/Desktop/Pranay/Projects/In-Queue/screen_shot/screenshots/2026-11-07/screenshot-2026-11-07T13-00-13-801871.png  (274 KB)
+[2026-11-07 13:00:48] [INFO] Registered with backend as record 62311a1b325e474482136f68aa690d90 (now visible in the overlay Gallery).
+[2026-11-07 13:00:50] [INFO] Registered with backend as record 51af3cc8a21642aca53382e8d1e951e3 (now visible in the overlay Gallery).
+[2026-11-07 13:01:38] [DEBUG] Key 'C' press 1/4
+[2026-11-07 13:01:40] [DEBUG] Key 'C' press 2/4
+[2026-11-07 13:01:46] [DEBUG] Timeout (6516ms). Restarting counter.
+[2026-11-07 13:01:46] [DEBUG] Key 'C' press 1/4
+[2026-11-07 13:01:47] [DEBUG] Key 'C' press 2/4
+[2026-11-07 13:02:11] [DEBUG] Timeout (23909ms). Restarting counter.
+[2026-11-07 13:02:11] [DEBUG] Key 'C' press 1/4
+[2026-11-07 13:02:11] [DEBUG] Key 'C' press 2/4
+[2026-11-07 13:02:11] [DEBUG] Key 'C' press 3/4
+[2026-11-07 13:02:11] [DEBUG] Key 'C' press 4/4
+[2026-11-07 13:02:11] [INFO] Trigger detected — saving to: /Users/pranay/Desktop/Pranay/Projects/In-Queue/screen_shot/screenshots/2026-11-07/screenshot-2026-11-07T13-02-11-971998.png
+[2026-11-07 13:02:12] [INFO] Screenshot saved: /Users/pranay/Desktop/Pranay/Projects/In-Queue/screen_shot/screenshots/2026-11-07/screenshot-2026-11-07T13-02-11-971998.png  (274 KB)
+[2026-11-07 13:02:37] [INFO] Registered with backend as record 212d1d5a75964f6fa28b966c03c52b6a (now visible in the overlay Gallery).
+[2026-11-07 13:02:46] [DEBUG] Key 'C' press 1/4
+[2026-11-07 13:02:48] [DEBUG] Key 'C' press 2/4
+[2026-11-07 13:04:16] [DEBUG] Timeout (88170ms). Restarting counter.
+[2026-11-07 13:04:16] [DEBUG] Key 'C' press 1/4
+[2026-11-07 13:10:16] [DEBUG] Timeout (359357ms). Restarting counter.
+[2026-11-07 13:10:16] [DEBUG] Key 'C' press 1/4
+[2026-11-07 13:10:16] [DEBUG] Key 'C' press 2/4
+[2026-11-07 13:10:19] [DEBUG] Timeout (3159ms). Restarting counter.
+[2026-11-07 13:10:19] [DEBUG] Key 'C' press 1/4
+[2026-11-07 13:10:21] [DEBUG] Key 'C' press 2/4
+[2026-11-07 13:10:33] [DEBUG] Timeout (12033ms). Restarting counter.
+[2026-11-07 13:10:33] [DEBUG] Key 'C' press 1/4
+[2026-11-07 13:10:33] [INFO] Signal 2 — shutting down.
+[2026-11-07 13:10:33] [INFO] Daemon stopped.
+[2026-11-07 13:10:36] [INFO] ============================================================
+[2026-11-07 13:10:36] [INFO] silent-screenshot-daemon starting
+[2026-11-07 13:10:36] [INFO] Config: trigger='C' x4 within 2000ms
+[2026-11-07 13:10:36] [INFO] Quit:   'Q' x4 within 2000ms
+[2026-11-07 13:10:36] [INFO] Output: /Users/pranay/Desktop/Pranay/Projects/In-Queue/screen_shot/screenshots
+[2026-11-07 13:10:36] [INFO] PID: 7878 | Python 3.12.15 | Darwin
+[2026-11-07 13:10:36] [INFO] Global key listener active. Waiting for trigger sequence…
+[2026-11-07 13:13:36] [DEBUG] Key 'C' press 1/4
+[2026-11-07 13:13:37] [DEBUG] Key 'C' press 2/4
+[2026-11-07 13:13:37] [DEBUG] Key 'C' press 3/4
+[2026-11-07 13:13:37] [DEBUG] Key 'C' press 4/4
+[2026-11-07 13:13:37] [INFO] Trigger detected — saving to: /Users/pranay/Desktop/Pranay/Projects/In-Queue/screen_shot/screenshots/2026-11-07/screenshot-2026-11-07T13-13-37-403692.png
+[2026-11-07 13:13:37] [INFO] Screenshot saved: /Users/pranay/Desktop/Pranay/Projects/In-Queue/screen_shot/screenshots/2026-11-07/screenshot-2026-11-07T13-13-37-403692.png  (261 KB)
+[2026-11-07 13:14:03] [INFO] Registered with backend as record 192ef1a5c18341f490d71dc85084be8a (now visible in the overlay Gallery).
+[2026-11-07 13:14:37] [DEBUG] Key 'C' press 1/4
+[2026-11-07 13:14:49] [DEBUG] Timeout (11938ms). Restarting counter.
+[2026-11-07 13:14:49] [DEBUG] Key 'C' press 1/4
+[2026-11-07 13:14:52] [DEBUG] Timeout (3250ms). Restarting counter.
+[2026-11-07 13:14:52] [DEBUG] Key 'C' press 1/4
+[2026-11-07 13:15:15] [DEBUG] Timeout (23419ms). Restarting counter.
+[2026-11-07 13:15:15] [DEBUG] Key 'C' press 1/4
+[2026-11-07 13:15:41] [DEBUG] Timeout (25360ms). Restarting counter.
+[2026-11-07 13:15:41] [DEBUG] Key 'C' press 1/4
+[2026-11-07 13:15:48] [DEBUG] Timeout (6941ms). Restarting counter.
+[2026-11-07 13:15:48] [DEBUG] Key 'C' press 1/4
+[2026-11-07 13:16:14] [DEBUG] Timeout (26125ms). Restarting counter.
+[2026-11-07 13:16:14] [DEBUG] Key 'C' press 1/4
+[2026-11-07 13:18:36] [DEBUG] Timeout (142183ms). Restarting counter.
+[2026-11-07 13:18:36] [DEBUG] Key 'C' press 1/4
+[2026-11-07 13:18:37] [DEBUG] Key 'C' press 2/4
+[2026-11-07 13:20:51] [DEBUG] Timeout (134327ms). Restarting counter.
+[2026-11-07 13:20:51] [DEBUG] Key 'C' press 1/4
+[2026-11-07 13:22:22] [DEBUG] Timeout (90759ms). Restarting counter.
+[2026-11-07 13:22:22] [DEBUG] Key 'C' press 1/4
+[2026-11-07 13:23:18] [DEBUG] Timeout (56069ms). Restarting counter.
+[2026-11-07 13:23:18] [DEBUG] Key 'C' press 1/4
+[2026-11-07 13:23:22] [DEBUG] Timeout (4239ms). Restarting counter.
+[2026-11-07 13:23:22] [DEBUG] Key 'C' press 1/4
+[2026-11-07 13:23:25] [DEBUG] Timeout (2987ms). Restarting counter.
+[2026-11-07 13:23:25] [DEBUG] Key 'C' press 1/4
+[2026-11-07 13:23:31] [DEBUG] Timeout (5877ms). Restarting counter.
+[2026-11-07 13:23:31] [DEBUG] Key 'C' press 1/4
+[2026-11-07 13:23:31] [DEBUG] Key 'C' press 2/4
+[2026-11-07 13:24:18] [DEBUG] Timeout (46747ms). Restarting counter.
+[2026-11-07 13:24:18] [DEBUG] Key 'C' press 1/4
+[2026-11-07 13:25:03] [DEBUG] Timeout (45121ms). Restarting counter.
+[2026-11-07 13:25:03] [DEBUG] Key 'C' press 1/4
+[2026-11-07 13:30:33] [DEBUG] Timeout (329913ms). Restarting counter.
+[2026-11-07 13:30:33] [DEBUG] Key 'C' press 1/4
+[2026-11-07 13:30:34] [DEBUG] Key 'C' press 2/4
+[2026-11-07 13:30:39] [DEBUG] Timeout (4469ms). Restarting counter.
+[2026-11-07 13:30:39] [DEBUG] Key 'C' press 1/4
+[2026-11-07 13:30:39] [INFO] Signal 2 — shutting down.
+[2026-11-07 13:30:39] [INFO] Daemon stopped.
+[2026-11-07 13:30:56] [INFO] ============================================================
+[2026-11-07 13:30:56] [INFO] silent-screenshot-daemon starting
+[2026-11-07 13:30:56] [INFO] Config: trigger='C' x4 within 2000ms
+[2026-11-07 13:30:56] [INFO] Quit:   'Q' x4 within 2000ms
+[2026-11-07 13:30:56] [INFO] Output: /Users/pranay/Desktop/Pranay/Projects/In-Queue/screen_shot/screenshots
+[2026-11-07 13:30:56] [INFO] PID: 12793 | Python 3.12.15 | Darwin
+[2026-11-07 13:30:56] [INFO] Global key listener active. Waiting for trigger sequence…
+[2026-11-07 13:32:21] [DEBUG] Key 'C' press 1/4
+[2026-11-07 13:32:22] [DEBUG] Key 'C' press 2/4
+[2026-11-07 13:32:27] [DEBUG] Timeout (4901ms). Restarting counter.
+[2026-11-07 13:32:27] [DEBUG] Key 'C' press 1/4
+[2026-11-07 13:32:28] [DEBUG] Key 'C' press 2/4
+[2026-11-07 13:32:31] [DEBUG] Timeout (3483ms). Restarting counter.
+[2026-11-07 13:32:31] [DEBUG] Key 'C' press 1/4
+[2026-11-07 13:32:31] [INFO] Signal 2 — shutting down.
+[2026-11-07 13:32:31] [INFO] Daemon stopped.
+[2026-11-07 13:34:30] [INFO] ============================================================
+[2026-11-07 13:34:30] [INFO] silent-screenshot-daemon starting
+[2026-11-07 13:34:30] [INFO] Config: trigger='C' x4 within 2000ms
+[2026-11-07 13:34:30] [INFO] Quit:   'Q' x4 within 2000ms
+[2026-11-07 13:34:30] [INFO] Output: /Users/pranay/Desktop/Pranay/Projects/In-Queue/screen_shot/screenshots
+[2026-11-07 13:34:30] [INFO] PID: 12900 | Python 3.12.15 | Darwin
+[2026-11-07 13:34:30] [INFO] Global key listener active. Waiting for trigger sequence…
+[2026-11-07 13:34:40] [DEBUG] Key 'C' press 1/4
+[2026-11-07 13:36:08] [DEBUG] Timeout (87650ms). Restarting counter.
+[2026-11-07 13:36:08] [DEBUG] Key 'C' press 1/4
+[2026-11-07 13:36:09] [DEBUG] Key 'C' press 2/4
+[2026-11-07 13:36:24] [DEBUG] Timeout (14863ms). Restarting counter.
+[2026-11-07 13:36:24] [DEBUG] Key 'C' press 1/4
+[2026-11-07 13:36:29] [DEBUG] Timeout (4990ms). Restarting counter.
+[2026-11-07 13:36:29] [DEBUG] Key 'C' press 1/4

@@ -1203,6 +1203,7 @@ def api_health():
         "success": True,
         "openai_configured": bool(ai_helper and ai_helper.is_configured()),
         "chat_model": getattr(ai_helper, "CHAT_MODEL", None) if ai_helper else None,
+        "vision_model": getattr(ai_helper, "VISION_MODEL", None) if ai_helper else None,
         "default_language": default_language,
         "default_speech_locale": default_locale,
         "supported_languages": languages,
@@ -1533,6 +1534,62 @@ def _save_inline_capture(image_data: str, source_type: str):
     rec = db_layer.create_record(source_type=source_type, input_ref=rel_ref, status="captured")
     return rec, img_path
 
+# ── Direct vision (image -> OpenAI) helpers ──────────────────────────────────
+VISION_MAX_IMAGES = int(os.environ.get("VISION_MAX_IMAGES", "6"))
+VISION_MAX_SIDE = int(os.environ.get("VISION_MAX_SIDE", "2000"))
+VISION_MAX_IMAGE_BYTES = int(os.environ.get("VISION_MAX_IMAGE_BYTES", str(15 * 1024 * 1024)))
+class _VisionInputError(Exception):
+    """Bad client input for /api/vision-ask; carries the HTTP status."""
+    def __init__(self, message: str, status: int = 400):
+        super().__init__(message)
+        self.status = status
+def _decode_data_url_image(data_url, index: int = 1) -> bytes:
+    bad = _VisionInputError(f"Image {index} is not a valid base64 image data URL.", 400)
+    if not isinstance(data_url, str) or not data_url.startswith("data:image/") \
+            or ";base64," not in data_url:
+        raise bad
+    encoded = data_url.split(";base64,", 1)[1]
+    try:
+        raw = base64.b64decode(encoded, validate=True)
+    except Exception:  # noqa: BLE001
+        raise bad
+    if not raw:
+        raise bad
+    if len(raw) > VISION_MAX_IMAGE_BYTES:
+        raise _VisionInputError(
+            f"Image {index} is too large (max {VISION_MAX_IMAGE_BYTES // (1024 * 1024)} MB).", 413)
+    return raw
+def _downscale_png(raw: bytes, max_side: int, index: int = 1) -> bytes:
+    """Decode, shrink so the longest side <= max_side, re-encode as PNG."""
+    try:
+        img = Image.open(io.BytesIO(raw))
+        img.load()
+    except Exception:  # noqa: BLE001 (includes decompression-bomb errors)
+        raise _VisionInputError(f"Image {index} could not be decoded.", 400)
+    if img.mode not in ("RGB", "RGBA"):
+        img = img.convert("RGBA" if "A" in img.getbands() else "RGB")
+    if max(img.size) > max_side:
+        img.thumbnail((max_side, max_side), Image.LANCZOS)
+    out = io.BytesIO()
+    img.save(out, format="PNG")
+    return out.getvalue()
+def _save_vision_batch(png_blobs):
+    """Write each PNG under screenshots/<date>/. Returns (rel_refs, abs_paths)."""
+    now = datetime.now()
+    day_dir = SHOTS_DIR / now.strftime("%Y-%m-%d")
+    day_dir.mkdir(parents=True, exist_ok=True)
+    stamp = now.strftime("%Y-%m-%dT%H-%M-%S-%f")
+    refs, paths = [], []
+    for i, blob in enumerate(png_blobs, 1):
+        path = (day_dir / f"capture-{stamp}-{i}.png").resolve()
+        with open(path, "wb") as f:
+            f.write(blob)
+        try:
+            refs.append(str(path.relative_to(ROOT)))
+        except ValueError:
+            refs.append(str(path))
+        paths.append(path)
+    return refs, paths
 @app.route("/api/ocr-only", methods=["POST"])
 def api_ocr_only():
     """
@@ -1574,6 +1631,84 @@ def api_ocr_only():
         "extracted_text": extracted or "",
     })
 
+@app.route("/api/vision-ask", methods=["POST"])
+def api_vision_ask():
+    """
+    One or more images -> OpenAI vision -> answer (no local OCR).
+    Request JSON:
+      { "images": ["data:image/png;base64,...", ...],
+        "mode": "coding"|"scenario",
+        "tone": "...", "language": "...",            # optional
+        "source_types": ["screenshot-full"|"screenshot-region", ...] }  # optional
+    Returns: { success, answer, record_id, image_count } or { success:false, error }
+    Status: 400 invalid, 413 too large/many, 502 OpenAI failure, 503 unavailable.
+    """
+    if ai_helper is None or db_layer is None:
+        return jsonify({"success": False, "error": "AI/data layer unavailable."}), 503
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"success": False, "error": "Invalid JSON body."}), 400
+    images = data.get("images")
+    if not isinstance(images, list) or not images:
+        return jsonify({"success": False, "error": "'images' must be a non-empty list."}), 400
+    if len(images) > VISION_MAX_IMAGES:
+        return jsonify({"success": False,
+                        "error": f"Too many images (max {VISION_MAX_IMAGES})."}), 413
+    mode = data.get("mode")
+    if mode not in ai_helper.VISION_MODES:
+        return jsonify({"success": False,
+                        "error": "Invalid 'mode'. Use 'coding' or 'scenario'."}), 400
+    tone = data.get("tone") if isinstance(data.get("tone"), str) else None
+    lang = None
+    language = data.get("language")
+    if isinstance(language, str) and language:
+        code = _normalize_language(language)
+        if code and code != "en":
+            lang = code
+    raw_types = data.get("source_types")
+    allowed = {"screenshot-full", "screenshot-region"}
+    source_types = []
+    for i in range(len(images)):
+        t = raw_types[i] if isinstance(raw_types, list) and i < len(raw_types) else None
+        source_types.append(t if t in allowed else "screenshot-full")
+    try:
+        png_blobs = [
+            _downscale_png(_decode_data_url_image(u, i), VISION_MAX_SIDE, i)
+            for i, u in enumerate(images, 1)
+        ]
+    except _VisionInputError as e:
+        return jsonify({"success": False, "error": str(e)}), e.status
+    urls = ["data:image/png;base64," + base64.b64encode(b).decode("ascii") for b in png_blobs]
+    try:
+        answer = ai_helper.ask_with_images(urls, mode, tone=tone, language=lang)
+    except ai_helper.AIError as e:
+        return jsonify({"success": False, "error": str(e)}), 502
+    except Exception:  # noqa: BLE001
+        logging.getLogger(__name__).exception("vision-ask failed")
+        return jsonify({"success": False,
+                        "error": "Unexpected error while processing images."}), 500
+    n = len(png_blobs)
+    label = f"[Vision · {mode} · {n} image{'s' if n != 1 else ''}]"
+    rec_type = "screenshot-region" if all(t == "screenshot-region" for t in source_types) \
+        else "screenshot-full"
+    saved_paths = []
+    try:
+        refs, saved_paths = _save_vision_batch(png_blobs)
+        rec = db_layer.create_record(source_type=rec_type, input_ref=refs[0],
+                                     extracted_text=label, answer=answer,
+                                     status="answered")
+        db_layer.add_history(rec["id"], label, answer)
+    except Exception as e:  # noqa: BLE001
+        logging.getLogger(__name__).exception("vision-ask save failed")
+        for p in saved_paths:  # don't leave orphan PNGs behind
+            try:
+                Path(p).unlink()
+            except OSError:
+                pass
+        return jsonify({"success": False, "answer": answer,
+                        "error": f"Answer generated but could not be saved: {e}"}), 500
+    return jsonify({"success": True, "answer": answer,
+                    "record_id": rec["id"], "image_count": n})
 @app.route("/api/solve", methods=["POST"])
 def api_solve():
     """

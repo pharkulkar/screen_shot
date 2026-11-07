@@ -36,6 +36,30 @@ except ImportError:  # pragma: no cover
 
 # Default chat model (overridable via env). See memory.md "Chosen defaults".
 CHAT_MODEL = os.environ.get("OPENAI_CHAT_MODEL", "gpt-4o-mini")
+# Vision (direct image -> answer) model. Falls back to the chat model.
+VISION_MODEL = os.environ.get("OPENAI_VISION_MODEL") or CHAT_MODEL
+VISION_MODES = ("coding", "scenario")
+_VISION_UNREADABLE = (
+    " If the image is unreadable or ambiguous, say so briefly instead of "
+    "inventing details."
+)
+VISION_CODING_PROMPT = (
+    "You are a coding assistant. The user's screenshot(s) show a programming "
+    "problem or code. Identify the problem shown, give a brief approach, then a "
+    "complete, correct solution in a fenced code block in the language implied "
+    "by the image (Python if none is implied). Finish with time/space "
+    "complexity and the key edge cases." + _VISION_UNREADABLE
+)
+VISION_SCENARIO_PROMPT = (
+    "You are a technical interview assistant. The user's screenshot(s) show a "
+    "scenario or question. Explain the scenario shown, reason through it step "
+    "by step, then give a clear, structured answer or recommendation."
+    + _VISION_UNREADABLE
+)
+VISION_SYSTEM_PROMPTS = {
+    "coding": VISION_CODING_PROMPT,
+    "scenario": VISION_SCENARIO_PROMPT,
+}
 
 # Transcription model (OQ-2 resolved: OpenAI gpt-4o-mini-transcribe).
 TRANSCRIBE_MODEL = os.environ.get("OPENAI_TRANSCRIBE_MODEL", "gpt-4o-mini-transcribe")
@@ -236,6 +260,38 @@ def ask(
         raise _wrap_openai_errors(exc)
 
 
+def _build_vision_messages(images, mode, tone=None, language=None) -> list:
+    """System + user messages for a direct image question. Pure (no network)."""
+    if mode not in VISION_MODES:
+        raise AIError("Invalid vision mode. Use 'coding' or 'scenario'.")
+    if not images:
+        raise AIError("No images provided.")
+    system = VISION_SYSTEM_PROMPTS[mode] + TONE_SUFFIXES.get(
+        (tone or DEFAULT_TONE).lower(), "")
+    if language:
+        system += "\n" + language_instruction(language)
+    n = len(images)
+    text = (f"Please give the {mode} answer for the "
+            f"{n} image{'s' if n != 1 else ''} below.")
+    content = [{"type": "text", "text": text}]
+    content += [{"type": "image_url", "image_url": {"url": u}} for u in images]
+    return [{"role": "system", "content": system},
+            {"role": "user", "content": content}]
+def ask_with_images(images, mode, tone=None, language=None, model=None) -> str:
+    """Send one or more data-URL images to OpenAI and return the answer.
+    Raises AIError on any failure."""
+    client = _get_client()
+    messages = _build_vision_messages(images, mode, tone, language)
+    try:
+        resp = client.chat.completions.create(
+            model=model or VISION_MODEL,
+            messages=messages,
+        )
+        return (resp.choices[0].message.content or "").strip()
+    except AIError:
+        raise
+    except Exception as exc:  # noqa: BLE001 — normalized into AIError below
+        raise _wrap_openai_errors(exc)
 # Per-language output-script steering prompts for transcription. Whisper-family
 # models bias their output SCRIPT toward whatever script appears in `prompt`.
 # The classic failure this fixes: Hindi speech transcribed into Urdu (Arabic)
