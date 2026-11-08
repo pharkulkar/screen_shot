@@ -28,6 +28,7 @@ import re
 import sys
 import threading
 import time
+from collections import OrderedDict
 from datetime import datetime
 from pathlib import Path
 
@@ -1209,6 +1210,62 @@ def api_health():
         "supported_languages": languages,
     })
 
+# ── Request cancellation registry ──────────────────────────────────────────────
+# The overlay's Stop button aborts its own fetch and also POSTs /api/cancel with
+# the request's id. The registry is in-memory, per-process (lost on restart),
+# bounded (oldest evicted first) and thread-safe. LIMITS: cancelling only stops
+# the result from being SAVED; it cannot abort the in-flight OpenAI call, so
+# tokens may still be consumed. Requests without a request_id are unaffected.
+_CANCEL_MAX = 1000
+_REQUEST_ID_MAX_LEN = 128
+_cancelled = OrderedDict()
+_cancel_lock = threading.Lock()
+
+
+def _valid_request_id(v):
+    if not isinstance(v, str):
+        return None
+    v = v.strip()
+    if not v or len(v) > _REQUEST_ID_MAX_LEN:
+        return None
+    return v
+
+
+def _mark_cancelled(rid):
+    with _cancel_lock:
+        _cancelled.pop(rid, None)
+        _cancelled[rid] = True
+        while len(_cancelled) > _CANCEL_MAX:
+            _cancelled.popitem(last=False)
+
+
+def _consume_cancelled(rid):
+    """True (and clear the id) if rid was cancelled."""
+    if not rid:
+        return False
+    with _cancel_lock:
+        return _cancelled.pop(rid, None) is not None
+
+
+def _cancelled_response():
+    return jsonify({"success": False, "cancelled": True, "error": "Cancelled"}), 200
+
+
+@app.route("/api/cancel", methods=["POST"])
+def api_cancel():
+    """Mark a request id cancelled. Body: { "request_id": "<str, <=128>" }.
+    Idempotent; always JSON."""
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"success": False, "error": "Invalid JSON body."}), 400
+    rid = _valid_request_id(data.get("request_id"))
+    if rid is None:
+        return jsonify({"success": False,
+                        "error": "'request_id' must be a non-empty string (max 128 chars)."}), 400
+    _mark_cancelled(rid)
+    return jsonify({"success": True})
+
+
 @app.route("/api/ask", methods=["POST"])
 def api_ask():
     """
@@ -1241,7 +1298,9 @@ def api_ask():
     tone = data.get("tone")
     record_id = data.get("record_id")  # optional: persist answer onto a record
     language = data.get("language")    # optional: pin the answer language
-
+    # optional: lets /api/cancel discard the result before persisting. Honored on
+    # the non-streaming JSON path only (the streaming branch ignores it).
+    request_id = _valid_request_id(data.get("request_id"))
     if not text:
         return jsonify({"success": False, "error": "Missing 'text'."}), 400
 
@@ -1282,12 +1341,17 @@ def api_ask():
     except ai_helper.AIError as e:
         # Config problems (missing key) vs. upstream API problems both map to
         # a clean 502-ish failure; 400 would wrongly imply a bad client request.
+        if _consume_cancelled(request_id):
+            return _cancelled_response()  # cancelled: don't mutate the record
         if record_id and db_layer is not None:
             db_layer.update_record(record_id, status="error")
         return jsonify({"success": False, "error": str(e)}), 502
     except Exception as e:  # noqa: BLE001
+        if _consume_cancelled(request_id):
+            return _cancelled_response()
         return jsonify({"success": False, "error": f"Unexpected error: {e}"}), 500
-
+    if _consume_cancelled(request_id):
+        return _cancelled_response()  # discard: nothing persisted
     # Persist the (possibly user-edited) text + answer so it shows in the
     # gallery and is cached. Three cases:
     #   - record_id given + exists -> update latest + append history
@@ -1602,6 +1666,9 @@ def api_ocr_only():
         "engine": "paddle|easyocr" }
 
     Returns: { success, record_id, extracted_text }
+    Cancellation: not supported server-side. The capture/record is saved before
+    OCR runs; a client "Stop" only stops waiting, OCR finishes in the background
+    and the saved record stays.
     """
     if ocr_engine is None or db_layer is None:
         return jsonify({"success": False, "error": "OCR/data layer unavailable."}), 503
@@ -1654,6 +1721,7 @@ def api_vision_ask():
     if len(images) > VISION_MAX_IMAGES:
         return jsonify({"success": False,
                         "error": f"Too many images (max {VISION_MAX_IMAGES})."}), 413
+    request_id = _valid_request_id(data.get("request_id"))
     mode = data.get("mode")
     if mode not in ai_helper.VISION_MODES:
         return jsonify({"success": False,
@@ -1682,11 +1750,17 @@ def api_vision_ask():
     try:
         answer = ai_helper.ask_with_images(urls, mode, tone=tone, language=lang)
     except ai_helper.AIError as e:
+        if _consume_cancelled(request_id):
+            return _cancelled_response()
         return jsonify({"success": False, "error": str(e)}), 502
     except Exception:  # noqa: BLE001
         logging.getLogger(__name__).exception("vision-ask failed")
+        if _consume_cancelled(request_id):
+            return _cancelled_response()
         return jsonify({"success": False,
                         "error": "Unexpected error while processing images."}), 500
+    if _consume_cancelled(request_id):
+        return _cancelled_response()  # discard: no files, record or history
     n = len(png_blobs)
     label = f"[Vision · {mode} · {n} image{'s' if n != 1 else ''}]"
     rec_type = "screenshot-region" if all(t == "screenshot-region" for t in source_types) \

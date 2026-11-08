@@ -3029,3 +3029,120 @@ AttributeError: module 'mss' has no attribute 'MSS'
 [2026-11-07 13:36:24] [DEBUG] Key 'C' press 1/4
 [2026-11-07 13:36:29] [DEBUG] Timeout (4990ms). Restarting counter.
 [2026-11-07 13:36:29] [DEBUG] Key 'C' press 1/4
+[2026-11-07 13:37:48] [DEBUG] Timeout (79422ms). Restarting counter.
+[2026-11-07 13:37:48] [DEBUG] Key 'C' press 1/4
+[2026-11-07 13:37:49] [DEBUG] Key 'C' press 2/4
+[2026-11-07 13:37:51] [DEBUG] Key 'Q' press 1/4
+[2026-11-07 13:50:04] [DEBUG] Timeout (734998ms). Restarting counter.
+[2026-11-07 13:50:04] [DEBUG] Key 'C' press 1/4
+[2026-11-07 13:50:22] [DEBUG] Timeout (18433ms). Restarting counter.
+[2026-11-07 13:50:22] [DEBUG] Key 'C' press 1/4
+[2026-11-07 13:50:23] [DEBUG] Key 'C' press 2/4
+[2026-11-07 13:50:23] [DEBUG] Key 'C' press 3/4
+[2026-11-07 13:50:23] [DEBUG] Key 'C' press 4/4
+[2026-11-07 13:50:23] [INFO] Trigger detected — saving to: /Users/pranay/Desktop/Pranay/Projects/In-Queue/screen_shot/screenshots/2026-11-07/screenshot-2026-11-07T13-50-23-254771.png
+[2026-11-07 13:50:23] [INFO] Screenshot saved: /Users/pranay/Desktop/Pranay/Projects/In-Queue/screen_shot/screenshots/2026-11-07/screenshot-2026-11-07T13-50-23-254771.png  (554 KB)
+[2026-11-07 13:50:50] [INFO] Registered with backend as record 478fcc59822e440888dce4db703eae81 (now visible in the overlay Gallery).
+[2026-11-07 13:52:08] [DEBUG] Key 'C' press 1/4
+[2026-11-07 13:52:09] [DEBUG] Key 'C' press 2/4
+[2026-11-07 13:52:23] [DEBUG] Timeout (14720ms). Restarting counter.
+[2026-11-07 13:52:23] [DEBUG] Key 'C' press 1/4
+[2026-11-07 13:52:47] [DEBUG] Timeout (24117ms). Restarting counter.
+[2026-11-07 13:52:47] [DEBUG] Key 'C' press 1/4
+[2026-11-07 13:52:48] [DEBUG] Key 'C' press 2/4
+[2026-11-07 13:52:56] [DEBUG] Timeout (8311ms). Restarting counter.
+[2026-11-07 13:52:56] [DEBUG] Key 'C' press 1/4
+[2026-11-07 13:52:58] [DEBUG] Key 'C' press 2/4
+[2026-11-07 13:52:59] [DEBUG] Key 'C' press 3/4
+[2026-11-07 13:53:42] [DEBUG] Timeout (43631ms). Restarting counter.
+[2026-11-07 13:53:42] [DEBUG] Key 'C' press 1/4
+[2026-11-07 13:54:11] [DEBUG] Timeout (980110ms). Restarting counter.
+[2026-11-07 13:54:11] [DEBUG] Key 'Q' press 1/4
+[2026-11-07 14:13:44] [DEBUG] Timeout (1201869ms). Restarting counter.
+[2026-11-07 14:13:44] [DEBUG] Key 'C' press 1/4
+[2026-11-07 14:13:48] [DEBUG] Timeout (3877ms). Restarting counter.
+[2026-11-07 14:13:48] [DEBUG] Key 'C' press 1/4
+[2026-11-07 14:13:49] [DEBUG] Key 'C' press 2/4
+[2026-11-07 14:13:52] [DEBUG] Timeout (3212ms). Restarting counter.
+[2026-11-07 14:13:52] [DEBUG] Key 'C' press 1/4
+[2026-11-07 14:13:52] [INFO] Signal 2 — shutting down.
+[2026-11-07 14:13:52] [INFO] Daemon stopped.
+[2026-11-07 14:14:02] [INFO] ============================================================
+[2026-11-07 14:14:02] [INFO] silent-screenshot-daemon starting
+[2026-11-07 14:14:02] [INFO] Config: trigger='C' x4 within 2000ms
+[2026-11-07 14:14:02] [INFO] Quit:   'Q' x4 within 2000ms
+[2026-11-07 14:14:02] [INFO] Output: /Users/pranay/Desktop/Pranay/Projects/In-Queue/screen_shot/screenshots
+[2026-11-07 14:14:02] [INFO] PID: 92093 | Python 3.12.15 | Darwin
+[2026-11-07 14:14:02] [INFO] Global key listener active. Waiting for trigger sequence…
+[2026-11-07 14:14:37] [DEBUG] Key 'C' press 1/4
+[2026-11-07 14:14:37] [DEBUG] Key 'C' press 2/4
+[2026-11-07 14:14:38] [DEBUG] Key 'C' press 3/4
+[2026-11-07 14:14:38] [DEBUG] Key 'C' press 4/4
+[2026-11-07 14:14:38] [INFO] Trigger detected — saving to: /Users/pranay/Desktop/Pranay/Projects/In-Queue/screen_shot/screenshots/2026-11-07/screenshot-2026-11-07T14-14-38-119026.png
+[2026-11-07 14:14:38] [INFO] Screenshot saved: /Users/pranay/Desktop/Pranay/Projects/In-Queue/screen_shot/screenshots/2026-11-07/screenshot-2026-11-07T14-14-38-119026.png  (8832 KB)
+[2026-11-07 14:14:51] [DEBUG] Key 'C' press 1/4
+[2026-11-07 14:14:51] [DEBUG] Key 'C' press 2/4
+[2026-11-07 14:14:51] [DEBUG] Key 'C' press 3/4
+[2026-11-07 14:14:52] [DEBUG] Key 'C' press 4/4
+[2026-11-07 14:14:52] [INFO] Trigger detected — saving to: /Users/pranay/Desktop/Pranay/Projects/In-Queue/screen_shot/screenshots/2026-11-07/screenshot-2026-11-07T14-14-52-095818.png
+[2026-11-07 14:14:52] [INFO] Screenshot saved: /Users/pranay/Desktop/Pranay/Projects/In-Queue/screen_shot/screenshots/2026-11-07/screenshot-2026-11-07T14-14-52-095818.png  (550 KB)
+[2026-11-07 14:15:23] [DEBUG] Key 'C' press 1/4
+[2026-11-07 14:15:24] [DEBUG] Key 'C' press 2/4
+[2026-11-07 14:15:24] [INFO] Registered with backend as record d9eb30efd2c447d9b3abac1c8a278453 (now visible in the overlay Gallery).
+[2026-11-07 14:15:46] [INFO] Registered with backend as record bbc8b583c81c42c093de67b8ed50e8da (now visible in the overlay Gallery).
+[2026-11-07 14:30:21] [DEBUG] Timeout (897276ms). Restarting counter.
+[2026-11-07 14:30:21] [DEBUG] Key 'C' press 1/4
+[2026-11-07 14:30:21] [DEBUG] Key 'C' press 2/4
+[2026-11-07 14:30:21] [DEBUG] Key 'C' press 3/4
+[2026-11-07 14:30:21] [DEBUG] Key 'C' press 4/4
+[2026-11-07 14:30:21] [INFO] Trigger detected — saving to: /Users/pranay/Desktop/Pranay/Projects/In-Queue/screen_shot/screenshots/2026-11-07/screenshot-2026-11-07T14-30-21-765430.png
+[2026-11-07 14:30:22] [INFO] Screenshot saved: /Users/pranay/Desktop/Pranay/Projects/In-Queue/screen_shot/screenshots/2026-11-07/screenshot-2026-11-07T14-30-21-765430.png  (8761 KB)
+[2026-11-07 14:30:25] [DEBUG] Key 'C' press 1/4
+[2026-11-07 14:30:49] [INFO] Registered with backend as record 21a4bd1cf60a4601b2fb64af10d7fedc (now visible in the overlay Gallery).
+[2026-11-07 15:15:31] [DEBUG] Timeout (2705497ms). Restarting counter.
+[2026-11-07 15:15:31] [DEBUG] Key 'C' press 1/4
+[2026-11-07 15:15:33] [DEBUG] Timeout (2498ms). Restarting counter.
+[2026-11-07 15:15:33] [DEBUG] Key 'C' press 1/4
+[2026-11-07 15:15:34] [DEBUG] Key 'C' press 2/4
+[2026-11-07 15:15:35] [DEBUG] Key 'C' press 3/4
+[2026-11-07 15:16:20] [DEBUG] Timeout (44989ms). Restarting counter.
+[2026-11-07 15:16:20] [DEBUG] Key 'C' press 1/4
+[2026-11-07 15:16:23] [DEBUG] Timeout (2631ms). Restarting counter.
+[2026-11-07 15:16:23] [DEBUG] Key 'C' press 1/4
+[2026-11-07 15:16:27] [DEBUG] Timeout (3897ms). Restarting counter.
+[2026-11-07 15:16:27] [DEBUG] Key 'C' press 1/4
+[2026-11-07 15:16:27] [DEBUG] Key 'C' press 2/4
+[2026-11-07 15:16:32] [DEBUG] Timeout (4485ms). Restarting counter.
+[2026-11-07 15:16:32] [DEBUG] Key 'C' press 1/4
+[2026-11-07 15:16:32] [INFO] Signal 2 — shutting down.
+[2026-11-07 15:16:32] [INFO] Daemon stopped.
+[2026-11-07 16:57:11] [INFO] ============================================================
+[2026-11-07 16:57:11] [INFO] silent-screenshot-daemon starting
+[2026-11-07 16:57:11] [INFO] Config: trigger='C' x4 within 2000ms
+[2026-11-07 16:57:11] [INFO] Quit:   'Q' x4 within 2000ms
+[2026-11-07 16:57:11] [INFO] Output: /Users/pranay/Desktop/Pranay/Projects/In-Queue/screen_shot/screenshots
+[2026-11-07 16:57:11] [INFO] PID: 93625 | Python 3.12.15 | Darwin
+[2026-11-07 16:57:11] [INFO] Global key listener active. Waiting for trigger sequence…
+[2026-11-07 17:01:05] [DEBUG] Key 'C' press 1/4
+[2026-11-07 17:01:05] [DEBUG] Key 'C' press 2/4
+[2026-11-07 17:01:05] [DEBUG] Key 'C' press 3/4
+[2026-11-07 17:01:05] [DEBUG] Key 'C' press 4/4
+[2026-11-07 17:01:05] [INFO] Trigger detected — saving to: /Users/pranay/Desktop/Pranay/Projects/In-Queue/screen_shot/screenshots/2026-11-07/screenshot-2026-11-07T17-01-05-746499.png
+[2026-11-07 17:01:05] [INFO] Screenshot saved: /Users/pranay/Desktop/Pranay/Projects/In-Queue/screen_shot/screenshots/2026-11-07/screenshot-2026-11-07T17-01-05-746499.png  (593 KB)
+[2026-11-07 17:01:37] [INFO] Registered with backend as record ac7f7687dd194253ab60191bb458ff41 (now visible in the overlay Gallery).
+[2026-11-07 17:04:44] [DEBUG] Key 'C' press 1/4
+[2026-11-07 17:04:44] [DEBUG] Key 'C' press 2/4
+[2026-11-07 17:04:44] [DEBUG] Key 'C' press 3/4
+[2026-11-07 17:04:44] [DEBUG] Key 'C' press 4/4
+[2026-11-07 17:04:44] [INFO] Trigger detected — saving to: /Users/pranay/Desktop/Pranay/Projects/In-Queue/screen_shot/screenshots/2026-11-07/screenshot-2026-11-07T17-04-44-558463.png
+[2026-11-07 17:04:44] [INFO] Screenshot saved: /Users/pranay/Desktop/Pranay/Projects/In-Queue/screen_shot/screenshots/2026-11-07/screenshot-2026-11-07T17-04-44-558463.png  (455 KB)
+[2026-11-07 17:05:14] [INFO] Registered with backend as record 97be40fc81c348a7845f34404fc09c6f (now visible in the overlay Gallery).
+[2026-11-07 17:09:24] [DEBUG] Key 'C' press 1/4
+[2026-11-07 17:09:25] [DEBUG] Key 'C' press 2/4
+[2026-11-07 17:09:30] [DEBUG] Timeout (4720ms). Restarting counter.
+[2026-11-07 17:09:30] [DEBUG] Key 'C' press 1/4
+[2026-11-07 17:09:31] [DEBUG] Key 'C' press 2/4
+[2026-11-07 17:09:34] [DEBUG] Timeout (3013ms). Restarting counter.
+[2026-11-07 17:09:34] [DEBUG] Key 'C' press 1/4
+[2026-11-07 17:09:34] [INFO] Signal 2 — shutting down.
+[2026-11-07 17:09:34] [INFO] Daemon stopped.
