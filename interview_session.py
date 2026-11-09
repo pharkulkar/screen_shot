@@ -103,8 +103,11 @@ class InterviewSession:
     def __init__(self, session_id, config, detector, ai_module, emit,
                  executor: ThreadPoolExecutor, candidate_profile: str | None = None,
                  db_module=None, clock=_now, language: str | None = None,
-                 languages: list[str] | None = None):
+                 languages: list[str] | None = None, roman: bool = False):
         self.id = session_id
+        # Roman output mode: answers are written in English letters. Passed to
+        # the answer function only when True (older stubs have no such kwarg).
+        self.roman = bool(roman)
         self.config = config
         self.detector = detector
         self.ai = ai_module
@@ -374,6 +377,9 @@ class InterviewSession:
             return
         # The TRUE per-utterance language (may be out of the selected set); used
         # to route detection. The ANSWER language is coerced into the set below.
+        # NOTE (Roman mode): romanized Hindi text keeps its original `hi`/`ur`/
+        # `hing` tag (never `en`), so detection still takes the non-English
+        # (LLM classifier) path.
         true_lang = turn_language or self.default_language
         answer_lang = self._coerce_language_in_set(true_lang)
         # Always record the turn into bounded history (context for follow-ups).
@@ -493,11 +499,13 @@ class InterviewSession:
         try:
             if self.config.streaming and hasattr(self.ai, "answer_interview_question_stream"):
                 collected = []
+                extra = {"roman": True} if self.roman else {}
                 for piece in self.ai.answer_interview_question_stream(
                     question.text, category=question.category, context=context,
                     candidate_profile=self.candidate_profile,
                     model=model, temperature=temperature,
                     language=question.language or self.default_language,
+                    **extra,
                 ):
                     if question.cancelled.is_set():
                         return
@@ -509,11 +517,13 @@ class InterviewSession:
                                {"question_id": question.id, "text": piece})
                 answer = "".join(collected).strip()
             else:
+                extra = {"roman": True} if self.roman else {}
                 answer = self.ai.answer_interview_question(
                     question.text, category=question.category, context=context,
                     candidate_profile=self.candidate_profile,
                     model=model, temperature=temperature,
                     language=question.language or self.default_language,
+                    **extra,
                 )
                 if question.cancelled.is_set():
                     return
@@ -600,7 +610,8 @@ class SessionManager:
     def start_session(self, emit, session_id: str | None = None,
                       candidate_profile: str | None = None,
                       language: str | None = None,
-                      languages: list[str] | None = None) -> InterviewSession:
+                      languages: list[str] | None = None,
+                      roman: bool = False) -> InterviewSession:
         sid = session_id or uuid.uuid4().hex
         with self._lock:
             existing = self._sessions.get(sid)
@@ -610,6 +621,7 @@ class SessionManager:
                 sid, self.config, self.detector, self.ai, emit,
                 self._executor, candidate_profile=candidate_profile,
                 db_module=self.db, language=language, languages=languages,
+                roman=roman,
             )
             self._sessions[sid] = session
             return session

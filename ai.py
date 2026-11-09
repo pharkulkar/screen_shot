@@ -310,6 +310,35 @@ _SCRIPT_STEER_PROMPTS = {
 }
 
 
+# Roman-mode steering: a short Roman-letters sample sentence per Indic language,
+# passed as the transcription `prompt` so the STT emits English letters (the way
+# people type in chat) instead of native script. English-only sets get none.
+_ROMAN_STEER_PROMPTS = {
+    "hi": "Yeh function kaise optimize karein aur iska time complexity kya hai",
+    "ur": "Yeh function kaise optimize karein aur iska time complexity kya hai",
+    "hing": "Yeh function kaise optimize karein aur iska time complexity kya hai",
+    "mr": "Hya problem la apan kasa solve karu shakto",
+    "ta": "Indha function ah eppadi optimize pannalam",
+    "te": "Ee function ni ela optimize cheyyali",
+    "bn": "Ei function ta kibhabe optimize korbo",
+    "gu": "Aa function ne kevi rite optimize karvu",
+    "pa": "Ih function nu kiven optimize kariye",
+    "kn": "Ee function annu hege optimize madabahudu",
+    "ml": "Ee function engane optimize cheyyam",
+}
+
+# Codes in the Indic set, Hindi family first (used to pick a steering language).
+_INDIC_STEER_ORDER = ("hing", "hi", "ur", "mr", "ta", "te", "bn", "gu", "pa", "kn", "ml")
+
+
+def _steer_prompt_for(sem_lang, roman: bool = False):
+    """Transcription steering prompt: the Roman sample when `roman` and the
+    language has one, else the legacy native-script prompt."""
+    if roman and sem_lang in _ROMAN_STEER_PROMPTS:
+        return _ROMAN_STEER_PROMPTS[sem_lang]
+    return _SCRIPT_STEER_PROMPTS.get(sem_lang)
+
+
 def _normalize_language_set_local(codes) -> list[str]:
     """Best-effort normalize a list of language values to base codes, reusing
     the shared registry normalizer when available (never raises)."""
@@ -337,6 +366,7 @@ def transcribe_detailed(
     model: str | None = None,
     language: str | None = None,
     candidate_languages: list[str] | None = None,
+    roman: bool = False,
 ) -> tuple[str, str | None]:
     """
     Transcribe a short audio chunk and (best-effort) report its language.
@@ -385,7 +415,15 @@ def transcribe_detailed(
     # model to emit that script. Fixes Hindi->Urdu (Arabic) script drift, and
     # keeps Hinglish in Roman/Latin. The `language` code biases detection but
     # does NOT control output script; the prompt does.
-    steer_prompt = _SCRIPT_STEER_PROMPTS.get(sem_lang)
+    steer_prompt = _steer_prompt_for(sem_lang, roman)
+    if roman and steer_prompt is None and sem_lang is None and candidate_languages:
+        # Roman mode with no single steering language: derive it from the set
+        # (Hinglish first, then the first Indic code). English-only -> none.
+        norm = _normalize_language_set_local(candidate_languages)
+        for code in _INDIC_STEER_ORDER:
+            if code in norm:
+                steer_prompt = _ROMAN_STEER_PROMPTS.get(code)
+                break
 
     # First attempt: verbose_json so we can read back a detected language.
     try:
@@ -514,6 +552,55 @@ def detect_language(text: str, candidate_languages: list[str], model: str | None
     return code if code in allowed else default
 
 
+_ROMANIZE_MAX_CHARS = 2000
+_ROMANIZE_SYSTEM_PROMPT = (
+    "Transliterate the user's text into Roman/Latin letters the way Indians "
+    "type in chat (Hinglish style). Do NOT translate. Do NOT correct grammar. "
+    "Keep English words, technical terms, code, numbers and punctuation "
+    "unchanged. Output ONLY the converted text."
+)
+
+
+def romanize_text(text: str, language: str | None = None,
+                  model: str | None = None) -> tuple[str, bool]:
+    """
+    Transliterate non-Latin `text` into Roman letters. Returns
+    ``(roman_text, converted)``. NEVER raises: on any error, empty reply, or a
+    reply that is still mostly non-Latin, returns ``(original, False)``.
+
+    Cost / latency: the OpenAI call happens ONLY when non-Latin letters are
+    present (already-Latin text and an unconfigured client skip it entirely),
+    i.e. at most one short temperature-0 chat call per such utterance.
+    """
+    original = text or ""
+    try:
+        import script_guard as _sg
+        if not original.strip() or not _sg.has_non_latin(original) or not is_configured():
+            return original, False
+        system = _ROMANIZE_SYSTEM_PROMPT
+        name = _language_names().get((language or "").strip().lower())
+        if name:
+            system += f" The speech language is {name}."
+        client = _get_client()
+        resp = client.chat.completions.create(
+            model=model or CHAT_MODEL,
+            temperature=0,
+            messages=[{"role": "system", "content": system},
+                      {"role": "user", "content": original[:_ROMANIZE_MAX_CHARS]}],
+        )
+        out = (resp.choices[0].message.content or "").strip()
+        if not out or _sg.script_of(out) != _sg.LATIN:
+            return original, False
+        counts = _sg.script_counts(out)
+        non_latin = sum(n for s, n in counts.items() if s != _sg.LATIN)
+        if non_latin / max(1, sum(counts.values())) >= 0.5:
+            return original, False
+        return out, True
+    except Exception as exc:  # noqa: BLE001 — romanizing must never crash
+        log.debug("romanize_text failed, keeping original: %s", exc)
+        return original, False
+
+
 def ask_stream(
     text: str,
     system_prompt: str | None = None,
@@ -632,13 +719,25 @@ _ANSWER_LANGUAGE_DIRECTIVES = {
 }
 
 
-def language_instruction(language: str | None) -> str:
+def language_instruction(language: str | None, roman: bool = False) -> str:
     """Return a one-line instruction pinning the answer language (English by
     default). Unknown/empty values fall back to English — we never silently
     switch to an unsupported language. This is the shared source of the
     answer-language directive string (reused by server.py's /api/ask path)."""
     raw = (language or DEFAULT_ANSWER_LANGUAGE or "en").strip().lower().replace("_", "-")
     code = raw if raw == "hing" else raw.split("-")[0]
+    if roman:
+        # Roman mode: the Hindi family (hi/ur/hing) shares the Hinglish
+        # directive; any other non-English language is answered in its own
+        # language but written ENTIRELY in Roman letters.
+        if code in ("hi", "ur", "hing"):
+            return _ANSWER_LANGUAGE_DIRECTIVES["hing"]
+        rname = _language_names().get(code)
+        if rname and code != "en":
+            return (f"- Respond in {rname} written ENTIRELY in Roman/Latin "
+                    "letters, the way people type it in chat, never in native "
+                    "script. Keep technical terms and code in English. Match "
+                    "the language of the interviewer's question.")
     if code in _ANSWER_LANGUAGE_DIRECTIVES:
         return _ANSWER_LANGUAGE_DIRECTIVES[code]
     name = _language_names().get(code, "English")
@@ -647,16 +746,17 @@ def language_instruction(language: str | None) -> str:
 
 
 # Backward-compat alias for internal callers (the public name is preferred).
-_language_instruction = language_instruction
+_language_instruction = language_instruction  # accepts the same `roman` kwarg
 
 
-def _build_interview_prompt(category: str | None, language: str | None = None) -> str:
+def _build_interview_prompt(category: str | None, language: str | None = None,
+                            roman: bool = False) -> str:
     """Compose the base interview prompt with category-specific guidance and a
     language directive (defaults to English)."""
     cat = (category or "general").lower()
     guidance = INTERVIEW_CATEGORY_PROMPTS.get(cat, INTERVIEW_CATEGORY_PROMPTS["general"])
     return (INTERVIEW_BASE_PROMPT + "\n" + guidance
-            + "\n" + _language_instruction(language))
+            + "\n" + _language_instruction(language, roman))
 
 
 def _build_interview_user_content(
@@ -685,6 +785,7 @@ def answer_interview_question(
     model: str | None = None,
     temperature: float | None = None,
     language: str | None = None,
+    roman: bool = False,
 ) -> str:
     """
     Generate a complete interview answer for `question`. Reuses the Chat
@@ -692,7 +793,7 @@ def answer_interview_question(
     default). Raises AIError on failure.
     """
     client = _get_client()
-    system = _build_interview_prompt(category, language)
+    system = _build_interview_prompt(category, language, roman)
     user = _build_interview_user_content(question, context, candidate_profile)
     kwargs: dict = {"model": model or CHAT_MODEL,
                     "messages": [{"role": "system", "content": system},
@@ -716,13 +817,14 @@ def answer_interview_question_stream(
     model: str | None = None,
     temperature: float | None = None,
     language: str | None = None,
+    roman: bool = False,
 ):
     """
     Stream an interview answer, yielding text chunks. `language` pins the answer
     language (English by default). Raises AIError on failure.
     """
     client = _get_client()
-    system = _build_interview_prompt(category, language)
+    system = _build_interview_prompt(category, language, roman)
     user = _build_interview_user_content(question, context, candidate_profile)
     kwargs: dict = {"model": model or CHAT_MODEL,
                     "messages": [{"role": "system", "content": system},

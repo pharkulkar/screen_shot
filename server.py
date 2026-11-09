@@ -64,6 +64,10 @@ except Exception:  # noqa: BLE001
 # [OCR-DISABLED]     ocr_engine = None
 
 try:
+    import script_guard
+except Exception:  # noqa: BLE001
+    script_guard = None
+try:
     import conversation as convo
 except Exception:  # noqa: BLE001
     convo = None
@@ -162,6 +166,13 @@ def _normalize_language_set(values, fallback: str = "en") -> list:
                     if b not in out:
                         out.append(b)
         return out or [fallback]
+
+
+def _truthy(v) -> bool:
+    """Lenient boolean for client flags: True, "true", "1" and 1 are truthy."""
+    if v is True or v == 1:
+        return True
+    return isinstance(v, str) and v.strip().lower() in ("true", "1")
 
 
 def _speech_locale_for(language) -> str:
@@ -2019,11 +2030,14 @@ if sock is not None:
         Client -> server:
             { "speaker": "me"|"them", "audio": "data:...;base64,..",
               "filename": "me.webm",
+              "languages": [...], "roman": true,   # both optional (Interview tab)
               "auto_suggest": true, "tone": "concise" }   # auto flags optional
             { "type": "suggest_now", "tone": "concise" }   # on-demand request
 
         Server -> client:
             { "type": "transcript", "speaker, text }
+              (+ language, speech_locale when `languages` was sent; + roman:true,
+               converted when `roman` was sent; absent roman == old shape)
             { "type": "suggestions", "suggestions": [...], "trigger": "auto|manual" }
             { "type": "error", "error": "..." }
         """
@@ -2117,6 +2131,11 @@ if sock is not None:
                 has_langs = isinstance(raw_languages, (list, tuple)) and len(raw_languages) > 0
                 true_lang = None
                 speech_locale = None
+                # Roman mode only applies on the language-aware path.
+                roman = (_truthy(msg.get("roman")) and has_langs
+                         and script_guard is not None)
+                converted = False
+                dropped = False
 
                 try:
                     if has_langs:
@@ -2125,10 +2144,33 @@ if sock is not None:
                         # 2+ passes no hard hint (the API takes one code only) and
                         # relies on the classifier fallback below.
                         hint = selected[0] if len(selected) == 1 else None
-                        text, detected = ai_helper.transcribe_detailed(
-                            audio_bytes, filename=filename,
-                            language=hint, candidate_languages=selected,
-                        )
+                        if roman:
+                            # Guarded STT: at most ONE extra transcription
+                            # retry per utterance when the script is implausible
+                            # for the selected languages; else it is dropped.
+                            def _stt(lang_hint, is_roman):
+                                return ai_helper.transcribe_detailed(
+                                    audio_bytes, filename=filename,
+                                    language=lang_hint,
+                                    candidate_languages=selected,
+                                    roman=is_roman,
+                                )
+                            guarded = script_guard.transcribe_with_guard(
+                                _stt, selected, True, hint)
+                            if guarded is None:
+                                dropped = True
+                                text, detected = "", None
+                                # Never log the text itself.
+                                logging.getLogger(__name__).warning(
+                                    "ws_audio: dropped implausible-script "
+                                    "utterance (roman mode)")
+                            else:
+                                text, detected = guarded
+                        else:
+                            text, detected = ai_helper.transcribe_detailed(
+                                audio_bytes, filename=filename,
+                                language=hint, candidate_languages=selected,
+                            )
                         if text:
                             # Determine the TRUE detected language honestly.
                             if detected and detected in selected:
@@ -2143,6 +2185,13 @@ if sock is not None:
                                 true_lang = detected or ai_helper.detect_language(
                                     text, selected)
                             speech_locale = _speech_locale_for(true_lang)
+                            # The tag above comes from the ORIGINAL text, so
+                            # romanized Hindi stays hi/ur/hing, never en. The
+                            # romanize call (one short chat call) happens only
+                            # when non-Latin letters remain.
+                            if roman and script_guard.has_non_latin(text):
+                                text, converted = ai_helper.romanize_text(
+                                    text, language=true_lang)
                     else:
                         text = ai_helper.transcribe(audio_bytes, filename=filename)
                 except ai_helper.AIError as e:
@@ -2152,9 +2201,8 @@ if sock is not None:
                     safe_send({"type": "error", "error": f"Transcription failed: {e}"})
                     continue
 
-                if not text:
-                    continue  # silence / nothing recognized
-
+                if dropped or not text:
+                    continue  # silence / nothing recognized / dropped
                 if convo is not None:
                     convo.add_turn(speaker, text)
                 reply = {"type": "transcript", "speaker": speaker, "text": text}
@@ -2162,6 +2210,9 @@ if sock is not None:
                     reply["language"] = true_lang
                 if speech_locale:
                     reply["speech_locale"] = speech_locale
+                if roman:
+                    reply["roman"] = True
+                    reply["converted"] = converted
                 safe_send(reply)
 
                 # Arm auto-suggest when the OTHER person just spoke.
@@ -2193,11 +2244,11 @@ def api_interview_start():
     profile = data.get("candidate_profile")
     language = data.get("language")  # optional; falls back to default English
     languages = data.get("languages")  # optional multi-select set
-
+    roman = _truthy(data.get("roman"))  # optional: answers in English letters
     buf = _InterviewEventBuffer()
     session = interview_manager.start_session(
         emit=buf.push, session_id=sid, candidate_profile=profile,
-        language=language, languages=languages,
+        language=language, languages=languages, roman=roman,
     )
     _REST_EVENT_BUFFERS[session.id] = buf
     return jsonify({
@@ -2205,6 +2256,7 @@ def api_interview_start():
         "session_id": session.id,
         "language": session.language,
         "languages": session.languages,
+        "roman": session.roman,
         "speech_locale": session.speech_locale,
         "config": _INTERVIEW_CONFIG.to_dict() if _INTERVIEW_CONFIG else {},
     })
@@ -2325,7 +2377,8 @@ if sock is not None and interview_manager is not None:
         server streams detection + answer events back.
 
         Client -> server (JSON frames):
-          { "type": "start", "session_id": "...", "candidate_profile": "..." }
+          { "type": "start", "session_id": "...", "candidate_profile": "...",
+            "language": "en", "languages": ["en", ...], "roman": true|false }
           { "type": "transcript", "text": "...", "is_final": true|false,
             "speaker": "them"|"me", "timestamp": <epoch, optional> }
           { "type": "cancel" }
@@ -2370,12 +2423,14 @@ if sock is not None and interview_manager is not None:
                             candidate_profile=msg.get("candidate_profile"),
                             language=msg.get("language"),
                             languages=msg.get("languages"),
+                            roman=_truthy(msg.get("roman")),
                         )
                         safe_send({"type": "SESSION_STARTED",
                                    "session_id": session.id,
                                    "language": session.language,
                                    "speech_locale": session.speech_locale,
                                    "languages": session.languages,
+                                   "roman": session.roman,
                                    "ts": time.time()})
                     if mtype == "start":
                         continue

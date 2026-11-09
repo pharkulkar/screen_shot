@@ -65,7 +65,15 @@ SUPPORTED_LANGUAGES: dict = {
     # script is forced to Roman via a steering prompt in ai.py, and answers are
     # generated in the same code-mixed Roman style.
     "hing": {"name": "Hinglish", "native": "Hinglish", "default_locale": "hi-IN"},
+    "ur": {"name": "Urdu", "native": "اردو", "default_locale": "ur-IN"},
     "mr": {"name": "Marathi", "native": "मराठी", "default_locale": "mr-IN"},
+    "bn": {"name": "Bengali", "native": "বাংলা", "default_locale": "bn-IN"},
+    "gu": {"name": "Gujarati", "native": "ગુજરાતી", "default_locale": "gu-IN"},
+    "pa": {"name": "Punjabi", "native": "ਪੰਜਾਬੀ", "default_locale": "pa-IN"},
+    "ta": {"name": "Tamil", "native": "தமிழ்", "default_locale": "ta-IN"},
+    "te": {"name": "Telugu", "native": "తెలుగు", "default_locale": "te-IN"},
+    "kn": {"name": "Kannada", "native": "ಕನ್ನಡ", "default_locale": "kn-IN"},
+    "ml": {"name": "Malayalam", "native": "മലയാളം", "default_locale": "ml-IN"},
     "zh": {"name": "Chinese", "native": "中文", "default_locale": "zh-CN"},
     "es": {"name": "Spanish", "native": "Español", "default_locale": "es-ES"},
     "fr": {"name": "French", "native": "Français", "default_locale": "fr-FR"},
@@ -78,11 +86,6 @@ SUPPORTED_LANGUAGES: dict = {
     "it": {"name": "Italian", "native": "Italiano", "default_locale": "it-IT"},
     "nl": {"name": "Dutch", "native": "Nederlands", "default_locale": "nl-NL"},
     "tr": {"name": "Turkish", "native": "Türkçe", "default_locale": "tr-TR"},
-    "ta": {"name": "Tamil", "native": "தமிழ்", "default_locale": "ta-IN"},
-    "te": {"name": "Telugu", "native": "తెలుగు", "default_locale": "te-IN"},
-    "bn": {"name": "Bengali", "native": "বাংলা", "default_locale": "bn-IN"},
-    "gu": {"name": "Gujarati", "native": "ગુજરાતી", "default_locale": "gu-IN"},
-    "pa": {"name": "Punjabi", "native": "ਪੰਜਾਬੀ", "default_locale": "pa-IN"},
 }
 
 DEFAULT_LANGUAGE = "en"

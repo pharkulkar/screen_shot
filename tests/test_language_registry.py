@@ -53,7 +53,7 @@ def test_in_set_empty_allowed_defaults_english():
 # ── Registry completeness ──────────────────────────────────────────────────────
 
 EXPECTED_CODES = {
-    "en", "hi", "hing", "mr", "zh", "es", "fr", "de", "ja", "ko", "ar",
+    "en", "hi", "hing", "ur", "kn", "ml", "mr", "zh", "es", "fr", "de", "ja", "ko", "ar",
     "pt", "ru", "it", "nl", "tr", "ta", "te", "bn", "gu", "pa",
 }
 

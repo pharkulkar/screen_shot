@@ -3243,3 +3243,19 @@ AttributeError: module 'mss' has no attribute 'MSS'
 [2026-11-09 14:28:11] [DEBUG] Key 'C' press 1/4
 [2026-11-09 14:28:11] [INFO] Signal 2 — shutting down.
 [2026-11-09 14:28:11] [INFO] Daemon stopped.
+[2026-11-09 15:03:23] [INFO] ============================================================
+[2026-11-09 15:03:23] [INFO] silent-screenshot-daemon starting
+[2026-11-09 15:03:23] [INFO] Config: trigger='C' x4 within 2000ms
+[2026-11-09 15:03:23] [INFO] Quit:   'Q' x4 within 2000ms
+[2026-11-09 15:03:23] [INFO] Output: /Users/pranay/Desktop/Pranay/Projects/In-Queue/screen_shot/screenshots
+[2026-11-09 15:03:23] [INFO] PID: 22064 | Python 3.12.15 | Darwin
+[2026-11-09 15:03:23] [INFO] Global key listener active. Waiting for trigger sequence…
+[2026-11-09 15:03:51] [DEBUG] Key 'C' press 1/4
+[2026-11-09 15:03:52] [DEBUG] Key 'C' press 2/4
+[2026-11-09 15:03:55] [DEBUG] Timeout (3331ms). Restarting counter.
+[2026-11-09 15:03:55] [DEBUG] Key 'C' press 1/4
+[2026-11-09 15:03:56] [DEBUG] Key 'C' press 2/4
+[2026-11-09 15:03:59] [DEBUG] Timeout (2837ms). Restarting counter.
+[2026-11-09 15:03:59] [DEBUG] Key 'C' press 1/4
+[2026-11-09 15:03:59] [INFO] Signal 2 — shutting down.
+[2026-11-09 15:03:59] [INFO] Daemon stopped.
