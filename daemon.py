@@ -163,8 +163,8 @@ def _capture_linux(out_path: Path, log: logging.Logger):
 
 # Backend base URL — same default as the overlay (override with env for a
 # custom port, e.g. BACKEND_PORT=3737). The daemon registers each capture here
-# so it becomes a record and appears in the overlay app's Gallery (OCR'd like
-# the overlay's own captures). Stdlib-only (urllib) so the daemon keeps zero
+# so it becomes a record and appears in the overlay app's Gallery (no local
+# OCR). Stdlib-only (urllib) so the daemon keeps zero
 # extra dependencies.
 _BACKEND_HOST = os.environ.get("BACKEND_HOST", "localhost")
 _BACKEND_PORT = os.environ.get("BACKEND_PORT", "3000")
@@ -173,8 +173,9 @@ _BACKEND_URL = f"http://{_BACKEND_HOST}:{_BACKEND_PORT}"
 
 def _register_with_backend(out_path: Path, log: logging.Logger) -> None:
     """
-    POST the just-captured PNG to the backend's /api/ocr-only so it becomes a
-    record (and is OCR'd) and shows up in the overlay Gallery.
+    POST the just-captured PNG to the backend's /api/register-capture so it
+    becomes a record and shows up in the overlay Gallery (no OCR).
+    # [OCR-DISABLED] was: POST to /api/ocr-only (which also OCR'd the capture).
 
     FAIL-SOFT: any error (backend down, timeout, bad response) is logged at
     WARNING and swallowed — the screenshot is already safely on disk, and a
@@ -194,15 +195,14 @@ def _register_with_backend(out_path: Path, log: logging.Logger) -> None:
             "source_type": "screenshot-full",   # daemon captures the full screen
         }).encode("utf-8")
         req = urllib.request.Request(
-            f"{_BACKEND_URL}/api/ocr-only",
+            f"{_BACKEND_URL}/api/register-capture",  # [OCR-DISABLED] was /api/ocr-only
             data=body,
             headers={"Content-Type": "application/json"},
             method="POST",
         )
-        # The backend creates the record up front (status 'captured') and then
-        # OCRs it; the record appears in the Gallery immediately, OCR text fills
-        # in shortly after. We allow a generous window for the response, but run
-        # on a background thread (see SequenceDetector) so this never blocks key
+        # The backend saves the image and creates a 'captured' record; it appears
+        # in the Gallery immediately. We allow a generous window for the response,
+        # but run on a background thread (see SequenceDetector) so this never blocks key
         # detection. A timeout here does NOT mean failure — the record is
         # typically already created server-side.
         with urllib.request.urlopen(req, timeout=60) as resp:

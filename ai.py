@@ -10,7 +10,7 @@ Design notes:
 - The API key is read from the environment (OPENAI_API_KEY), server-side only.
   It is NEVER sent to or exposed in the overlay.
 - The client is created lazily so importing this module never fails just
-  because a key isn't set yet (the server must still boot for gallery/OCR).
+  because a key isn't set yet (the server must still boot for the gallery)  # [OCR-DISABLED] old: gallery/OCR.
 - Models are configurable via env; defaults match memory.md (gpt-4o-mini).
 - Two entry points: `ask()` (returns the full answer) and `ask_stream()`
   (yields answer chunks for low-latency streaming to the overlay).

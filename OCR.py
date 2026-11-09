@@ -1,1597 +1,1600 @@
-import os
-import cv2
-import json
-import re
-import numpy as np
-from statistics import median
-from paddleocr import PaddleOCR
+# [OCR-FILE-DISABLED] Entire file commented out (local OCR removed; app is vision-only).
+# [OCR-FILE-DISABLED] Restore: sed -i '' 's/^# \[OCR-DISABLED\] //' OCR.py  (then delete these 3 header lines)
+# [OCR-FILE-DISABLED] Blank lines were left as-is; every other line is prefixed with '# [OCR-DISABLED] '.
+# [OCR-DISABLED] import os
+# [OCR-DISABLED] import cv2
+# [OCR-DISABLED] import json
+# [OCR-DISABLED] import re
+# [OCR-DISABLED] import numpy as np
+# [OCR-DISABLED] from statistics import median
+# [OCR-DISABLED] from paddleocr import PaddleOCR
 
 
-class SmartQuestionOCR:
+# [OCR-DISABLED] class SmartQuestionOCR:
 
-    # ==========================================================
-    # INITIALIZATION
-    # ==========================================================
+# [OCR-DISABLED]     # ==========================================================
+# [OCR-DISABLED]     # INITIALIZATION
+# [OCR-DISABLED]     # ==========================================================
 
-    def __init__(self):
+# [OCR-DISABLED]     def __init__(self):
 
-        print("\nLoading PaddleOCR models...")
+# [OCR-DISABLED]         print("\nLoading PaddleOCR models...")
 
-        self.ocr = PaddleOCR(
-            use_doc_orientation_classify=True,
-            use_doc_unwarping=True,
-            use_textline_orientation=True,
-            lang="en"
-        )
+# [OCR-DISABLED]         self.ocr = PaddleOCR(
+# [OCR-DISABLED]             use_doc_orientation_classify=True,
+# [OCR-DISABLED]             use_doc_unwarping=True,
+# [OCR-DISABLED]             use_textline_orientation=True,
+# [OCR-DISABLED]             lang="en"
+# [OCR-DISABLED]         )
 
-    # ==========================================================
-    # TEXT CLEANING
-    # ==========================================================
+# [OCR-DISABLED]     # ==========================================================
+# [OCR-DISABLED]     # TEXT CLEANING
+# [OCR-DISABLED]     # ==========================================================
 
-    @staticmethod
-    def clean_text(text):
+# [OCR-DISABLED]     @staticmethod
+# [OCR-DISABLED]     def clean_text(text):
 
-        if text is None:
-            return ""
+# [OCR-DISABLED]         if text is None:
+# [OCR-DISABLED]             return ""
 
-        text = str(text)
+# [OCR-DISABLED]         text = str(text)
 
-        text = re.sub(
-            r"\s+",
-            " ",
-            text
-        )
+# [OCR-DISABLED]         text = re.sub(
+# [OCR-DISABLED]             r"\s+",
+# [OCR-DISABLED]             " ",
+# [OCR-DISABLED]             text
+# [OCR-DISABLED]         )
 
-        return text.strip()
+# [OCR-DISABLED]         return text.strip()
 
-    # ==========================================================
-    # BOX HELPERS
-    # ==========================================================
+# [OCR-DISABLED]     # ==========================================================
+# [OCR-DISABLED]     # BOX HELPERS
+# [OCR-DISABLED]     # ==========================================================
 
-    @staticmethod
-    def get_box(item):
+# [OCR-DISABLED]     @staticmethod
+# [OCR-DISABLED]     def get_box(item):
 
-        box = item.get("box", [0, 0, 0, 0])
+# [OCR-DISABLED]         box = item.get("box", [0, 0, 0, 0])
 
-        return (
-            int(box[0]),
-            int(box[1]),
-            int(box[2]),
-            int(box[3])
-        )
+# [OCR-DISABLED]         return (
+# [OCR-DISABLED]             int(box[0]),
+# [OCR-DISABLED]             int(box[1]),
+# [OCR-DISABLED]             int(box[2]),
+# [OCR-DISABLED]             int(box[3])
+# [OCR-DISABLED]         )
 
-    def get_height(self, item):
+# [OCR-DISABLED]     def get_height(self, item):
 
-        _, y1, _, y2 = self.get_box(item)
+# [OCR-DISABLED]         _, y1, _, y2 = self.get_box(item)
 
-        return max(1, y2 - y1)
+# [OCR-DISABLED]         return max(1, y2 - y1)
 
-    # ==========================================================
-    # IMAGE PREPROCESSING
-    # ==========================================================
+# [OCR-DISABLED]     # ==========================================================
+# [OCR-DISABLED]     # IMAGE PREPROCESSING
+# [OCR-DISABLED]     # ==========================================================
 
-    def preprocess_image(self, image_path):
+# [OCR-DISABLED]     def preprocess_image(self, image_path):
 
-        # Check path before loading
-        if not os.path.exists(image_path):
+# [OCR-DISABLED]         # Check path before loading
+# [OCR-DISABLED]         if not os.path.exists(image_path):
 
-            raise FileNotFoundError(
-                f"\nImage not found:\n{image_path}\n\n"
-                f"Please verify the absolute image path."
-            )
+# [OCR-DISABLED]             raise FileNotFoundError(
+# [OCR-DISABLED]                 f"\nImage not found:\n{image_path}\n\n"
+# [OCR-DISABLED]                 f"Please verify the absolute image path."
+# [OCR-DISABLED]             )
 
-        image = cv2.imread(image_path)
+# [OCR-DISABLED]         image = cv2.imread(image_path)
 
-        if image is None:
+# [OCR-DISABLED]         if image is None:
 
-            raise ValueError(
-                f"\nUnable to load image:\n{image_path}"
-            )
+# [OCR-DISABLED]             raise ValueError(
+# [OCR-DISABLED]                 f"\nUnable to load image:\n{image_path}"
+# [OCR-DISABLED]             )
 
-        height, width = image.shape[:2]
+# [OCR-DISABLED]         height, width = image.shape[:2]
 
-        print(
-            f"Original image size: "
-            f"{width} x {height}"
-        )
+# [OCR-DISABLED]         print(
+# [OCR-DISABLED]             f"Original image size: "
+# [OCR-DISABLED]             f"{width} x {height}"
+# [OCR-DISABLED]         )
 
-        # Upscale only relatively small images
-        if width < 1200:
+# [OCR-DISABLED]         # Upscale only relatively small images
+# [OCR-DISABLED]         if width < 1200:
 
-            scale = 2
+# [OCR-DISABLED]             scale = 2
 
-            image = cv2.resize(
-                image,
-                None,
-                fx=scale,
-                fy=scale,
-                interpolation=cv2.INTER_CUBIC
-            )
+# [OCR-DISABLED]             image = cv2.resize(
+# [OCR-DISABLED]                 image,
+# [OCR-DISABLED]                 None,
+# [OCR-DISABLED]                 fx=scale,
+# [OCR-DISABLED]                 fy=scale,
+# [OCR-DISABLED]                 interpolation=cv2.INTER_CUBIC
+# [OCR-DISABLED]             )
 
-            print(
-                f"Upscaled image size: "
-                f"{image.shape[1]} x "
-                f"{image.shape[0]}"
-            )
+# [OCR-DISABLED]             print(
+# [OCR-DISABLED]                 f"Upscaled image size: "
+# [OCR-DISABLED]                 f"{image.shape[1]} x "
+# [OCR-DISABLED]                 f"{image.shape[0]}"
+# [OCR-DISABLED]             )
 
-        # Light denoising
-        # Keep image in BGR format for PaddleOCR
-        image = cv2.bilateralFilter(
-            image,
-            7,
-            50,
-            50
-        )
+# [OCR-DISABLED]         # Light denoising
+# [OCR-DISABLED]         # Keep image in BGR format for PaddleOCR
+# [OCR-DISABLED]         image = cv2.bilateralFilter(
+# [OCR-DISABLED]             image,
+# [OCR-DISABLED]             7,
+# [OCR-DISABLED]             50,
+# [OCR-DISABLED]             50
+# [OCR-DISABLED]         )
 
-        return image
+# [OCR-DISABLED]         return image
 
-    # ==========================================================
-    # OCR EXTRACTION
-    # ==========================================================
+# [OCR-DISABLED]     # ==========================================================
+# [OCR-DISABLED]     # OCR EXTRACTION
+# [OCR-DISABLED]     # ==========================================================
 
-    def extract_ocr_items(
-        self,
-        image_path,
-        min_confidence=0.50
-    ):
+# [OCR-DISABLED]     def extract_ocr_items(
+# [OCR-DISABLED]         self,
+# [OCR-DISABLED]         image_path,
+# [OCR-DISABLED]         min_confidence=0.50
+# [OCR-DISABLED]     ):
 
-        image = self.preprocess_image(
-            image_path
-        )
+# [OCR-DISABLED]         image = self.preprocess_image(
+# [OCR-DISABLED]             image_path
+# [OCR-DISABLED]         )
 
-        print("\nPerforming OCR...")
+# [OCR-DISABLED]         print("\nPerforming OCR...")
 
-        results = self.ocr.predict(
-            image
-        )
+# [OCR-DISABLED]         results = self.ocr.predict(
+# [OCR-DISABLED]             image
+# [OCR-DISABLED]         )
 
-        items = []
+# [OCR-DISABLED]         items = []
 
-        for page in results:
+# [OCR-DISABLED]         for page in results:
 
-            # --------------------------------------------------
-            # Convert PaddleOCR result into dictionary
-            # --------------------------------------------------
+# [OCR-DISABLED]             # --------------------------------------------------
+# [OCR-DISABLED]             # Convert PaddleOCR result into dictionary
+# [OCR-DISABLED]             # --------------------------------------------------
 
-            if hasattr(page, "json"):
+# [OCR-DISABLED]             if hasattr(page, "json"):
 
-                page_data = page.json
+# [OCR-DISABLED]                 page_data = page.json
 
-            elif isinstance(page, dict):
+# [OCR-DISABLED]             elif isinstance(page, dict):
 
-                page_data = page
+# [OCR-DISABLED]                 page_data = page
 
-            else:
+# [OCR-DISABLED]             else:
 
-                continue
+# [OCR-DISABLED]                 continue
 
-            # Some versions return JSON string
-            if isinstance(page_data, str):
+# [OCR-DISABLED]             # Some versions return JSON string
+# [OCR-DISABLED]             if isinstance(page_data, str):
 
-                try:
+# [OCR-DISABLED]                 try:
 
-                    page_data = json.loads(
-                        page_data
-                    )
+# [OCR-DISABLED]                     page_data = json.loads(
+# [OCR-DISABLED]                         page_data
+# [OCR-DISABLED]                     )
 
-                except json.JSONDecodeError:
+# [OCR-DISABLED]                 except json.JSONDecodeError:
 
-                    continue
+# [OCR-DISABLED]                     continue
 
-            if not isinstance(page_data, dict):
+# [OCR-DISABLED]             if not isinstance(page_data, dict):
 
-                continue
+# [OCR-DISABLED]                 continue
 
-            # PaddleOCR result
-            res = page_data.get(
-                "res",
-                {}
-            )
+# [OCR-DISABLED]             # PaddleOCR result
+# [OCR-DISABLED]             res = page_data.get(
+# [OCR-DISABLED]                 "res",
+# [OCR-DISABLED]                 {}
+# [OCR-DISABLED]             )
 
-            texts = res.get(
-                "rec_texts",
-                []
-            )
+# [OCR-DISABLED]             texts = res.get(
+# [OCR-DISABLED]                 "rec_texts",
+# [OCR-DISABLED]                 []
+# [OCR-DISABLED]             )
 
-            scores = res.get(
-                "rec_scores",
-                []
-            )
+# [OCR-DISABLED]             scores = res.get(
+# [OCR-DISABLED]                 "rec_scores",
+# [OCR-DISABLED]                 []
+# [OCR-DISABLED]             )
 
-            boxes = res.get(
-                "rec_boxes",
-                []
-            )
+# [OCR-DISABLED]             boxes = res.get(
+# [OCR-DISABLED]                 "rec_boxes",
+# [OCR-DISABLED]                 []
+# [OCR-DISABLED]             )
 
-            # --------------------------------------------------
-            # Create OCR items
-            # --------------------------------------------------
+# [OCR-DISABLED]             # --------------------------------------------------
+# [OCR-DISABLED]             # Create OCR items
+# [OCR-DISABLED]             # --------------------------------------------------
 
-            for text, score, box in zip(
-                texts,
-                scores,
-                boxes
-            ):
+# [OCR-DISABLED]             for text, score, box in zip(
+# [OCR-DISABLED]                 texts,
+# [OCR-DISABLED]                 scores,
+# [OCR-DISABLED]                 boxes
+# [OCR-DISABLED]             ):
 
-                text = self.clean_text(
-                    text
-                )
+# [OCR-DISABLED]                 text = self.clean_text(
+# [OCR-DISABLED]                     text
+# [OCR-DISABLED]                 )
 
-                if not text:
-                    continue
+# [OCR-DISABLED]                 if not text:
+# [OCR-DISABLED]                     continue
 
-                try:
+# [OCR-DISABLED]                 try:
 
-                    score = float(score)
+# [OCR-DISABLED]                     score = float(score)
 
-                except (TypeError, ValueError):
+# [OCR-DISABLED]                 except (TypeError, ValueError):
 
-                    score = 0.0
+# [OCR-DISABLED]                     score = 0.0
 
-                if score < min_confidence:
-                    continue
+# [OCR-DISABLED]                 if score < min_confidence:
+# [OCR-DISABLED]                     continue
 
-                try:
+# [OCR-DISABLED]                 try:
 
-                    box = [
-                        int(value)
-                        for value in box
-                    ]
+# [OCR-DISABLED]                     box = [
+# [OCR-DISABLED]                         int(value)
+# [OCR-DISABLED]                         for value in box
+# [OCR-DISABLED]                     ]
 
-                except Exception:
+# [OCR-DISABLED]                 except Exception:
 
-                    continue
+# [OCR-DISABLED]                     continue
 
-                if len(box) != 4:
-                    continue
+# [OCR-DISABLED]                 if len(box) != 4:
+# [OCR-DISABLED]                     continue
 
-                items.append({
+# [OCR-DISABLED]                 items.append({
 
-                    "text": text,
+# [OCR-DISABLED]                     "text": text,
 
-                    "confidence": score,
+# [OCR-DISABLED]                     "confidence": score,
 
-                    "box": box
+# [OCR-DISABLED]                     "box": box
 
-                })
+# [OCR-DISABLED]                 })
 
-        # Sort from top to bottom
-        items.sort(
-            key=lambda item: (
-                self.get_box(item)[1],
-                self.get_box(item)[0]
-            )
-        )
+# [OCR-DISABLED]         # Sort from top to bottom
+# [OCR-DISABLED]         items.sort(
+# [OCR-DISABLED]             key=lambda item: (
+# [OCR-DISABLED]                 self.get_box(item)[1],
+# [OCR-DISABLED]                 self.get_box(item)[0]
+# [OCR-DISABLED]             )
+# [OCR-DISABLED]         )
 
-        return items
+# [OCR-DISABLED]         return items
 
-    # ==========================================================
-    # UI NOISE DETECTION
-    # ==========================================================
+# [OCR-DISABLED]     # ==========================================================
+# [OCR-DISABLED]     # UI NOISE DETECTION
+# [OCR-DISABLED]     # ==========================================================
 
-    def is_ui_noise(self, text):
+# [OCR-DISABLED]     def is_ui_noise(self, text):
 
-        text = self.clean_text(text)
+# [OCR-DISABLED]         text = self.clean_text(text)
 
-        lower = text.lower()
+# [OCR-DISABLED]         lower = text.lower()
 
-        patterns = [
+# [OCR-DISABLED]         patterns = [
 
-            # Input fields
-            r"^type your answer.*$",
-            r"^enter your answer.*$",
-            r"^write your answer.*$",
+# [OCR-DISABLED]             # Input fields
+# [OCR-DISABLED]             r"^type your answer.*$",
+# [OCR-DISABLED]             r"^enter your answer.*$",
+# [OCR-DISABLED]             r"^write your answer.*$",
 
-            # Navigation
-            r"^(next|previous|submit|finish|back|continue)$",
+# [OCR-DISABLED]             # Navigation
+# [OCR-DISABLED]             r"^(next|previous|submit|finish|back|continue)$",
 
-            # Assessment state
-            r"^(answered|not answered)$",
+# [OCR-DISABLED]             # Assessment state
+# [OCR-DISABLED]             r"^(answered|not answered)$",
 
-            # Progress
-            r"^\d+\s*/\s*\d+$",
+# [OCR-DISABLED]             # Progress
+# [OCR-DISABLED]             r"^\d+\s*/\s*\d+$",
 
-            # Timer
-            r"^\d{1,2}:\d{2}$",
+# [OCR-DISABLED]             # Timer
+# [OCR-DISABLED]             r"^\d{1,2}:\d{2}$",
 
-            # Single OCR garbage characters
-            r"^[a-z]{1,2}$"
-        ]
+# [OCR-DISABLED]             # Single OCR garbage characters
+# [OCR-DISABLED]             r"^[a-z]{1,2}$"
+# [OCR-DISABLED]         ]
 
-        for pattern in patterns:
+# [OCR-DISABLED]         for pattern in patterns:
 
-            if re.match(
-                pattern,
-                lower,
-                re.IGNORECASE
-            ):
+# [OCR-DISABLED]             if re.match(
+# [OCR-DISABLED]                 pattern,
+# [OCR-DISABLED]                 lower,
+# [OCR-DISABLED]                 re.IGNORECASE
+# [OCR-DISABLED]             ):
 
-                return True
+# [OCR-DISABLED]                 return True
 
-        return False
+# [OCR-DISABLED]         return False
 
-    # ==========================================================
-    # EXPLICIT QUESTION ANCHOR
-    # ==========================================================
+# [OCR-DISABLED]     # ==========================================================
+# [OCR-DISABLED]     # EXPLICIT QUESTION ANCHOR
+# [OCR-DISABLED]     # ==========================================================
 
-    def is_question_anchor(self, text):
+# [OCR-DISABLED]     def is_question_anchor(self, text):
 
-        text = self.clean_text(text)
+# [OCR-DISABLED]         text = self.clean_text(text)
 
-        patterns = [
+# [OCR-DISABLED]         patterns = [
 
-            # Q1
-            r"^Q\s*\d+$",
+# [OCR-DISABLED]             # Q1
+# [OCR-DISABLED]             r"^Q\s*\d+$",
 
-            # Q.1
-            r"^Q\.\s*\d+$",
+# [OCR-DISABLED]             # Q.1
+# [OCR-DISABLED]             r"^Q\.\s*\d+$",
 
-            # Question 1
-            r"^Question\s+\d+$",
+# [OCR-DISABLED]             # Question 1
+# [OCR-DISABLED]             r"^Question\s+\d+$",
 
-            # Question 1.
-            r"^Question\s+\d+[\.\):]?$"
-        ]
+# [OCR-DISABLED]             # Question 1.
+# [OCR-DISABLED]             r"^Question\s+\d+[\.\):]?$"
+# [OCR-DISABLED]         ]
 
-        for pattern in patterns:
+# [OCR-DISABLED]         for pattern in patterns:
 
-            if re.match(
-                pattern,
-                text,
-                re.IGNORECASE
-            ):
+# [OCR-DISABLED]             if re.match(
+# [OCR-DISABLED]                 pattern,
+# [OCR-DISABLED]                 text,
+# [OCR-DISABLED]                 re.IGNORECASE
+# [OCR-DISABLED]             ):
 
-                return True
+# [OCR-DISABLED]                 return True
 
-        return False
+# [OCR-DISABLED]         return False
 
-    # ==========================================================
-    # EXPLICIT OPTION DETECTION
-    # ==========================================================
+# [OCR-DISABLED]     # ==========================================================
+# [OCR-DISABLED]     # EXPLICIT OPTION DETECTION
+# [OCR-DISABLED]     # ==========================================================
 
-    def is_explicit_option(self, text):
+# [OCR-DISABLED]     def is_explicit_option(self, text):
 
-        text = self.clean_text(text)
+# [OCR-DISABLED]         text = self.clean_text(text)
 
-        patterns = [
-            # A. Option / OA. Option / OB.$0.05 / O A. Option
-            r"^(?:O|0|○|◯|●)?\s*\(?[A-Ha-h]\)?[\.\):]\s*.+$",
+# [OCR-DISABLED]         patterns = [
+# [OCR-DISABLED]             # A. Option / OA. Option / OB.$0.05 / O A. Option
+# [OCR-DISABLED]             r"^(?:O|0|○|◯|●)?\s*\(?[A-Ha-h]\)?[\.\):]\s*.+$",
 
-            # (A) Option
-            r"^\([A-Ha-h]\)\s*.+$",
+# [OCR-DISABLED]             # (A) Option
+# [OCR-DISABLED]             r"^\([A-Ha-h]\)\s*.+$",
 
-            # 1. Option
-            r"^\d+[\.\)]\s*.+$"
-        ]
+# [OCR-DISABLED]             # 1. Option
+# [OCR-DISABLED]             r"^\d+[\.\)]\s*.+$"
+# [OCR-DISABLED]         ]
 
-        for pattern in patterns:
+# [OCR-DISABLED]         for pattern in patterns:
 
-            if re.match(
-                pattern,
-                text,
-                re.IGNORECASE
-            ):
+# [OCR-DISABLED]             if re.match(
+# [OCR-DISABLED]                 pattern,
+# [OCR-DISABLED]                 text,
+# [OCR-DISABLED]                 re.IGNORECASE
+# [OCR-DISABLED]             ):
 
-                return True
+# [OCR-DISABLED]                 return True
 
-        return False
+# [OCR-DISABLED]         return False
 
-    # ==========================================================
-    # OPTION CONTAMINATION DETECTION
-    # ==========================================================
+# [OCR-DISABLED]     # ==========================================================
+# [OCR-DISABLED]     # OPTION CONTAMINATION DETECTION
+# [OCR-DISABLED]     # ==========================================================
 
-    def contains_embedded_option(self, text):
+# [OCR-DISABLED]     def contains_embedded_option(self, text):
 
-        text = self.clean_text(text)
+# [OCR-DISABLED]         text = self.clean_text(text)
 
-        if not text:
-            return False
+# [OCR-DISABLED]         if not text:
+# [OCR-DISABLED]             return False
 
-        patterns = [
-            # "...? A. answer", "...? OA. answer", "...? OB.$0.05"
-            r"\s+(?:O|0|○|◯|●)?\s*\(?[A-Ha-h]\)?[\.\):]\s*(?=\S)",
+# [OCR-DISABLED]         patterns = [
+# [OCR-DISABLED]             # "...? A. answer", "...? OA. answer", "...? OB.$0.05"
+# [OCR-DISABLED]             r"\s+(?:O|0|○|◯|●)?\s*\(?[A-Ha-h]\)?[\.\):]\s*(?=\S)",
 
-            # "...? 1. answer"
-            r"\s+\d+[\.\)]\s*(?=\S)"
-        ]
+# [OCR-DISABLED]             # "...? 1. answer"
+# [OCR-DISABLED]             r"\s+\d+[\.\)]\s*(?=\S)"
+# [OCR-DISABLED]         ]
 
-        for pattern in patterns:
+# [OCR-DISABLED]         for pattern in patterns:
 
-            for match in re.finditer(
-                pattern,
-                text,
-                re.IGNORECASE
-            ):
+# [OCR-DISABLED]             for match in re.finditer(
+# [OCR-DISABLED]                 pattern,
+# [OCR-DISABLED]                 text,
+# [OCR-DISABLED]                 re.IGNORECASE
+# [OCR-DISABLED]             ):
 
-                # Only an option AFTER existing question text is contamination.
-                if match.start() > 0:
+# [OCR-DISABLED]                 # Only an option AFTER existing question text is contamination.
+# [OCR-DISABLED]                 if match.start() > 0:
 
-                    return True
+# [OCR-DISABLED]                     return True
 
-        return False
+# [OCR-DISABLED]         return False
 
-    # ==========================================================
-    # QUESTION TEXT CLEANUP
-    # ==========================================================
+# [OCR-DISABLED]     # ==========================================================
+# [OCR-DISABLED]     # QUESTION TEXT CLEANUP
+# [OCR-DISABLED]     # ==========================================================
 
-    def clean_question_candidate(self, text):
+# [OCR-DISABLED]     def clean_question_candidate(self, text):
 
-        text = self.clean_text(text)
+# [OCR-DISABLED]         text = self.clean_text(text)
 
-        if not text:
-            return ""
+# [OCR-DISABLED]         if not text:
+# [OCR-DISABLED]             return ""
 
-        patterns = [
-            r"\s+(?:O|0|○|◯|●)?\s*\(?[A-Ha-h]\)?[\.\):]\s*.+$",
-            r"\s+\d+[\.\)]\s*.+$"
-        ]
+# [OCR-DISABLED]         patterns = [
+# [OCR-DISABLED]             r"\s+(?:O|0|○|◯|●)?\s*\(?[A-Ha-h]\)?[\.\):]\s*.+$",
+# [OCR-DISABLED]             r"\s+\d+[\.\)]\s*.+$"
+# [OCR-DISABLED]         ]
 
-        for pattern in patterns:
+# [OCR-DISABLED]         for pattern in patterns:
 
-            match = re.search(
-                pattern,
-                text,
-                re.IGNORECASE
-            )
+# [OCR-DISABLED]             match = re.search(
+# [OCR-DISABLED]                 pattern,
+# [OCR-DISABLED]                 text,
+# [OCR-DISABLED]                 re.IGNORECASE
+# [OCR-DISABLED]             )
 
-            if match and match.start() > 0:
+# [OCR-DISABLED]             if match and match.start() > 0:
 
-                text = text[:match.start()]
-                break
+# [OCR-DISABLED]                 text = text[:match.start()]
+# [OCR-DISABLED]                 break
 
-        return self.clean_text(text)
+# [OCR-DISABLED]         return self.clean_text(text)
 
-    # ==========================================================
-    # CALCULATE DYNAMIC LAYOUT METRICS
-    # ==========================================================
+# [OCR-DISABLED]     # ==========================================================
+# [OCR-DISABLED]     # CALCULATE DYNAMIC LAYOUT METRICS
+# [OCR-DISABLED]     # ==========================================================
 
-    def calculate_layout_metrics(self, items):
+# [OCR-DISABLED]     def calculate_layout_metrics(self, items):
 
-        if not items:
+# [OCR-DISABLED]         if not items:
 
-            return {
+# [OCR-DISABLED]             return {
 
-                "median_height": 30,
+# [OCR-DISABLED]                 "median_height": 30,
 
-                "x_threshold": 50,
+# [OCR-DISABLED]                 "x_threshold": 50,
 
-                "max_vertical_gap": 200,
+# [OCR-DISABLED]                 "max_vertical_gap": 200,
 
-                "line_gap_limit": 100
-            }
+# [OCR-DISABLED]                 "line_gap_limit": 100
+# [OCR-DISABLED]             }
 
-        heights = []
+# [OCR-DISABLED]         heights = []
 
-        for item in items:
+# [OCR-DISABLED]         for item in items:
 
-            height = self.get_height(item)
+# [OCR-DISABLED]             height = self.get_height(item)
 
-            if height > 0:
+# [OCR-DISABLED]             if height > 0:
 
-                heights.append(height)
+# [OCR-DISABLED]                 heights.append(height)
 
-        if not heights:
+# [OCR-DISABLED]         if not heights:
 
-            median_height = 30
+# [OCR-DISABLED]             median_height = 30
 
-        else:
+# [OCR-DISABLED]         else:
 
-            median_height = median(
-                heights
-            )
+# [OCR-DISABLED]             median_height = median(
+# [OCR-DISABLED]                 heights
+# [OCR-DISABLED]             )
 
-        return {
+# [OCR-DISABLED]         return {
 
-            "median_height":
-                median_height,
+# [OCR-DISABLED]             "median_height":
+# [OCR-DISABLED]                 median_height,
 
-            "x_threshold":
-                max(
-                    25,
-                    median_height * 1.5
-                ),
+# [OCR-DISABLED]             "x_threshold":
+# [OCR-DISABLED]                 max(
+# [OCR-DISABLED]                     25,
+# [OCR-DISABLED]                     median_height * 1.5
+# [OCR-DISABLED]                 ),
 
-            "max_vertical_gap":
-                max(
-                    120,
-                    median_height * 6
-                ),
+# [OCR-DISABLED]             "max_vertical_gap":
+# [OCR-DISABLED]                 max(
+# [OCR-DISABLED]                     120,
+# [OCR-DISABLED]                     median_height * 6
+# [OCR-DISABLED]                 ),
 
-            "line_gap_limit":
-                max(
-                    80,
-                    median_height * 4
-                )
-        }
+# [OCR-DISABLED]             "line_gap_limit":
+# [OCR-DISABLED]                 max(
+# [OCR-DISABLED]                     80,
+# [OCR-DISABLED]                     median_height * 4
+# [OCR-DISABLED]                 )
+# [OCR-DISABLED]         }
 
-    # ==========================================================
-    # DETECT OPTION GROUPS USING LEFT ALIGNMENT
-    #
-    # Example:
-    #
-    # What is Angular?       x = 0
-    #
-    # A CSS preprocessor     x = 94
-    # A JavaScript library   x = 95
-    # A framework...         x = 93
-    # A programming...       x = 91
-    # ==========================================================
+# [OCR-DISABLED]     # ==========================================================
+# [OCR-DISABLED]     # DETECT OPTION GROUPS USING LEFT ALIGNMENT
+# [OCR-DISABLED]     #
+# [OCR-DISABLED]     # Example:
+# [OCR-DISABLED]     #
+# [OCR-DISABLED]     # What is Angular?       x = 0
+# [OCR-DISABLED]     #
+# [OCR-DISABLED]     # A CSS preprocessor     x = 94
+# [OCR-DISABLED]     # A JavaScript library   x = 95
+# [OCR-DISABLED]     # A framework...         x = 93
+# [OCR-DISABLED]     # A programming...       x = 91
+# [OCR-DISABLED]     # ==========================================================
 
-    def detect_layout_option_groups(
-        self,
-        items,
-        metrics
-    ):
+# [OCR-DISABLED]     def detect_layout_option_groups(
+# [OCR-DISABLED]         self,
+# [OCR-DISABLED]         items,
+# [OCR-DISABLED]         metrics
+# [OCR-DISABLED]     ):
 
-        if len(items) < 3:
+# [OCR-DISABLED]         if len(items) < 3:
 
-            return []
+# [OCR-DISABLED]             return []
 
-        sorted_items = sorted(
-            items,
-            key=lambda item: (
-                self.get_box(item)[1],
-                self.get_box(item)[0]
-            )
-        )
+# [OCR-DISABLED]         sorted_items = sorted(
+# [OCR-DISABLED]             items,
+# [OCR-DISABLED]             key=lambda item: (
+# [OCR-DISABLED]                 self.get_box(item)[1],
+# [OCR-DISABLED]                 self.get_box(item)[0]
+# [OCR-DISABLED]             )
+# [OCR-DISABLED]         )
 
-        x_threshold = metrics[
-            "x_threshold"
-        ]
+# [OCR-DISABLED]         x_threshold = metrics[
+# [OCR-DISABLED]             "x_threshold"
+# [OCR-DISABLED]         ]
 
-        max_vertical_gap = metrics[
-            "max_vertical_gap"
-        ]
+# [OCR-DISABLED]         max_vertical_gap = metrics[
+# [OCR-DISABLED]             "max_vertical_gap"
+# [OCR-DISABLED]         ]
 
-        x_clusters = []
+# [OCR-DISABLED]         x_clusters = []
 
-        # ------------------------------------------------------
-        # STEP 1:
-        # Cluster text having similar left alignment
-        # ------------------------------------------------------
+# [OCR-DISABLED]         # ------------------------------------------------------
+# [OCR-DISABLED]         # STEP 1:
+# [OCR-DISABLED]         # Cluster text having similar left alignment
+# [OCR-DISABLED]         # ------------------------------------------------------
 
-        for item in sorted_items:
+# [OCR-DISABLED]         for item in sorted_items:
 
-            text = self.clean_text(
-                item["text"]
-            )
+# [OCR-DISABLED]             text = self.clean_text(
+# [OCR-DISABLED]                 item["text"]
+# [OCR-DISABLED]             )
 
-            if self.is_ui_noise(text):
-                continue
+# [OCR-DISABLED]             if self.is_ui_noise(text):
+# [OCR-DISABLED]                 continue
 
-            x1, _, _, _ = self.get_box(
-                item
-            )
+# [OCR-DISABLED]             x1, _, _, _ = self.get_box(
+# [OCR-DISABLED]                 item
+# [OCR-DISABLED]             )
 
-            added_to_cluster = False
+# [OCR-DISABLED]             added_to_cluster = False
 
-            for cluster in x_clusters:
+# [OCR-DISABLED]             for cluster in x_clusters:
 
-                x_values = [
+# [OCR-DISABLED]                 x_values = [
 
-                    self.get_box(
-                        cluster_item
-                    )[0]
+# [OCR-DISABLED]                     self.get_box(
+# [OCR-DISABLED]                         cluster_item
+# [OCR-DISABLED]                     )[0]
 
-                    for cluster_item in cluster
-                ]
+# [OCR-DISABLED]                     for cluster_item in cluster
+# [OCR-DISABLED]                 ]
 
-                median_x = float(
-                    np.median(x_values)
-                )
+# [OCR-DISABLED]                 median_x = float(
+# [OCR-DISABLED]                     np.median(x_values)
+# [OCR-DISABLED]                 )
 
-                if abs(
-                    x1 - median_x
-                ) <= x_threshold:
+# [OCR-DISABLED]                 if abs(
+# [OCR-DISABLED]                     x1 - median_x
+# [OCR-DISABLED]                 ) <= x_threshold:
 
-                    cluster.append(item)
+# [OCR-DISABLED]                     cluster.append(item)
 
-                    added_to_cluster = True
+# [OCR-DISABLED]                     added_to_cluster = True
 
-                    break
+# [OCR-DISABLED]                     break
 
-            if not added_to_cluster:
+# [OCR-DISABLED]             if not added_to_cluster:
 
-                x_clusters.append(
-                    [item]
-                )
+# [OCR-DISABLED]                 x_clusters.append(
+# [OCR-DISABLED]                     [item]
+# [OCR-DISABLED]                 )
 
-        # ------------------------------------------------------
-        # STEP 2:
-        # Split clusters based on vertical distance
-        # ------------------------------------------------------
+# [OCR-DISABLED]         # ------------------------------------------------------
+# [OCR-DISABLED]         # STEP 2:
+# [OCR-DISABLED]         # Split clusters based on vertical distance
+# [OCR-DISABLED]         # ------------------------------------------------------
 
-        valid_groups = []
+# [OCR-DISABLED]         valid_groups = []
 
-        for cluster in x_clusters:
+# [OCR-DISABLED]         for cluster in x_clusters:
 
-            if len(cluster) < 3:
-                continue
+# [OCR-DISABLED]             if len(cluster) < 3:
+# [OCR-DISABLED]                 continue
 
-            cluster.sort(
-                key=lambda item:
-                    self.get_box(item)[1]
-            )
+# [OCR-DISABLED]             cluster.sort(
+# [OCR-DISABLED]                 key=lambda item:
+# [OCR-DISABLED]                     self.get_box(item)[1]
+# [OCR-DISABLED]             )
 
-            current_group = [
-                cluster[0]
-            ]
+# [OCR-DISABLED]             current_group = [
+# [OCR-DISABLED]                 cluster[0]
+# [OCR-DISABLED]             ]
 
-            previous_item = cluster[0]
+# [OCR-DISABLED]             previous_item = cluster[0]
 
-            for item in cluster[1:]:
+# [OCR-DISABLED]             for item in cluster[1:]:
 
-                _, previous_y1, _, _ = (
-                    self.get_box(
-                        previous_item
-                    )
-                )
+# [OCR-DISABLED]                 _, previous_y1, _, _ = (
+# [OCR-DISABLED]                     self.get_box(
+# [OCR-DISABLED]                         previous_item
+# [OCR-DISABLED]                     )
+# [OCR-DISABLED]                 )
 
-                _, current_y1, _, _ = (
-                    self.get_box(
-                        item
-                    )
-                )
+# [OCR-DISABLED]                 _, current_y1, _, _ = (
+# [OCR-DISABLED]                     self.get_box(
+# [OCR-DISABLED]                         item
+# [OCR-DISABLED]                     )
+# [OCR-DISABLED]                 )
 
-                vertical_gap = (
-                    current_y1 - previous_y1
-                )
+# [OCR-DISABLED]                 vertical_gap = (
+# [OCR-DISABLED]                     current_y1 - previous_y1
+# [OCR-DISABLED]                 )
 
-                if (
-                    vertical_gap > 0
-                    and vertical_gap <= max_vertical_gap
-                ):
+# [OCR-DISABLED]                 if (
+# [OCR-DISABLED]                     vertical_gap > 0
+# [OCR-DISABLED]                     and vertical_gap <= max_vertical_gap
+# [OCR-DISABLED]                 ):
 
-                    current_group.append(
-                        item
-                    )
+# [OCR-DISABLED]                     current_group.append(
+# [OCR-DISABLED]                         item
+# [OCR-DISABLED]                     )
 
-                else:
+# [OCR-DISABLED]                 else:
 
-                    if len(current_group) >= 3:
+# [OCR-DISABLED]                     if len(current_group) >= 3:
 
-                        valid_groups.append(
-                            current_group
-                        )
+# [OCR-DISABLED]                         valid_groups.append(
+# [OCR-DISABLED]                             current_group
+# [OCR-DISABLED]                         )
 
-                    current_group = [
-                        item
-                    ]
+# [OCR-DISABLED]                     current_group = [
+# [OCR-DISABLED]                         item
+# [OCR-DISABLED]                     ]
 
-                previous_item = item
+# [OCR-DISABLED]                 previous_item = item
 
-            # Save final group
-            if len(current_group) >= 3:
+# [OCR-DISABLED]             # Save final group
+# [OCR-DISABLED]             if len(current_group) >= 3:
 
-                valid_groups.append(
-                    current_group
-                )
+# [OCR-DISABLED]                 valid_groups.append(
+# [OCR-DISABLED]                     current_group
+# [OCR-DISABLED]                 )
 
-        return valid_groups
+# [OCR-DISABLED]         return valid_groups
 
-    # ==========================================================
-    # DETECT EXPLICIT OPTION GROUPS
-    #
-    # Example:
-    #
-    # A. Something
-    # B. Something
-    # C. Something
-    # D. Something
-    # ==========================================================
+# [OCR-DISABLED]     # ==========================================================
+# [OCR-DISABLED]     # DETECT EXPLICIT OPTION GROUPS
+# [OCR-DISABLED]     #
+# [OCR-DISABLED]     # Example:
+# [OCR-DISABLED]     #
+# [OCR-DISABLED]     # A. Something
+# [OCR-DISABLED]     # B. Something
+# [OCR-DISABLED]     # C. Something
+# [OCR-DISABLED]     # D. Something
+# [OCR-DISABLED]     # ==========================================================
 
-    def detect_explicit_option_groups(
-        self,
-        items,
-        metrics
-    ):
+# [OCR-DISABLED]     def detect_explicit_option_groups(
+# [OCR-DISABLED]         self,
+# [OCR-DISABLED]         items,
+# [OCR-DISABLED]         metrics
+# [OCR-DISABLED]     ):
 
-        option_items = []
+# [OCR-DISABLED]         option_items = []
 
-        for item in items:
+# [OCR-DISABLED]         for item in items:
 
-            if self.is_explicit_option(
-                item["text"]
-            ):
+# [OCR-DISABLED]             if self.is_explicit_option(
+# [OCR-DISABLED]                 item["text"]
+# [OCR-DISABLED]             ):
 
-                option_items.append(
-                    item
-                )
+# [OCR-DISABLED]                 option_items.append(
+# [OCR-DISABLED]                     item
+# [OCR-DISABLED]                 )
 
-        if len(option_items) < 2:
+# [OCR-DISABLED]         if len(option_items) < 2:
 
-            return []
+# [OCR-DISABLED]             return []
 
-        option_items.sort(
-            key=lambda item:
-                self.get_box(item)[1]
-        )
+# [OCR-DISABLED]         option_items.sort(
+# [OCR-DISABLED]             key=lambda item:
+# [OCR-DISABLED]                 self.get_box(item)[1]
+# [OCR-DISABLED]         )
 
-        groups = []
+# [OCR-DISABLED]         groups = []
 
-        current_group = [
-            option_items[0]
-        ]
+# [OCR-DISABLED]         current_group = [
+# [OCR-DISABLED]             option_items[0]
+# [OCR-DISABLED]         ]
 
-        previous_item = option_items[0]
+# [OCR-DISABLED]         previous_item = option_items[0]
 
-        max_gap = (
-            metrics[
-                "max_vertical_gap"
-            ] * 1.5
-        )
+# [OCR-DISABLED]         max_gap = (
+# [OCR-DISABLED]             metrics[
+# [OCR-DISABLED]                 "max_vertical_gap"
+# [OCR-DISABLED]             ] * 1.5
+# [OCR-DISABLED]         )
 
-        for item in option_items[1:]:
+# [OCR-DISABLED]         for item in option_items[1:]:
 
-            _, previous_y1, _, _ = (
-                self.get_box(
-                    previous_item
-                )
-            )
+# [OCR-DISABLED]             _, previous_y1, _, _ = (
+# [OCR-DISABLED]                 self.get_box(
+# [OCR-DISABLED]                     previous_item
+# [OCR-DISABLED]                 )
+# [OCR-DISABLED]             )
 
-            _, current_y1, _, _ = (
-                self.get_box(item)
-            )
+# [OCR-DISABLED]             _, current_y1, _, _ = (
+# [OCR-DISABLED]                 self.get_box(item)
+# [OCR-DISABLED]             )
 
-            vertical_gap = (
-                current_y1 - previous_y1
-            )
+# [OCR-DISABLED]             vertical_gap = (
+# [OCR-DISABLED]                 current_y1 - previous_y1
+# [OCR-DISABLED]             )
 
-            if (
-                vertical_gap > 0
-                and vertical_gap <= max_gap
-            ):
+# [OCR-DISABLED]             if (
+# [OCR-DISABLED]                 vertical_gap > 0
+# [OCR-DISABLED]                 and vertical_gap <= max_gap
+# [OCR-DISABLED]             ):
 
-                current_group.append(
-                    item
-                )
+# [OCR-DISABLED]                 current_group.append(
+# [OCR-DISABLED]                     item
+# [OCR-DISABLED]                 )
 
-            else:
+# [OCR-DISABLED]             else:
 
-                if len(current_group) >= 2:
+# [OCR-DISABLED]                 if len(current_group) >= 2:
 
-                    groups.append(
-                        current_group
-                    )
+# [OCR-DISABLED]                     groups.append(
+# [OCR-DISABLED]                         current_group
+# [OCR-DISABLED]                     )
 
-                current_group = [
-                    item
-                ]
+# [OCR-DISABLED]                 current_group = [
+# [OCR-DISABLED]                     item
+# [OCR-DISABLED]                 ]
 
-            previous_item = item
+# [OCR-DISABLED]             previous_item = item
 
-        if len(current_group) >= 2:
+# [OCR-DISABLED]         if len(current_group) >= 2:
 
-            groups.append(
-                current_group
-            )
+# [OCR-DISABLED]             groups.append(
+# [OCR-DISABLED]                 current_group
+# [OCR-DISABLED]             )
 
-        return groups
+# [OCR-DISABLED]         return groups
 
-    # ==========================================================
-    # REMOVE DUPLICATE GROUPS
-    # ==========================================================
+# [OCR-DISABLED]     # ==========================================================
+# [OCR-DISABLED]     # REMOVE DUPLICATE GROUPS
+# [OCR-DISABLED]     # ==========================================================
 
-    def remove_duplicate_groups(self, groups):
+# [OCR-DISABLED]     def remove_duplicate_groups(self, groups):
 
-        unique_groups = []
+# [OCR-DISABLED]         unique_groups = []
 
-        seen = set()
+# [OCR-DISABLED]         seen = set()
 
-        for group in groups:
+# [OCR-DISABLED]         for group in groups:
 
-            group_key = tuple(
-                sorted(
-                    id(item)
-                    for item in group
-                )
-            )
+# [OCR-DISABLED]             group_key = tuple(
+# [OCR-DISABLED]                 sorted(
+# [OCR-DISABLED]                     id(item)
+# [OCR-DISABLED]                     for item in group
+# [OCR-DISABLED]                 )
+# [OCR-DISABLED]             )
 
-            if group_key in seen:
-                continue
+# [OCR-DISABLED]             if group_key in seen:
+# [OCR-DISABLED]                 continue
 
-            seen.add(
-                group_key
-            )
+# [OCR-DISABLED]             seen.add(
+# [OCR-DISABLED]                 group_key
+# [OCR-DISABLED]             )
 
-            unique_groups.append(
-                group
-            )
+# [OCR-DISABLED]             unique_groups.append(
+# [OCR-DISABLED]                 group
+# [OCR-DISABLED]             )
 
-        return unique_groups
+# [OCR-DISABLED]         return unique_groups
 
-    # ==========================================================
-    # EXTRACT QUESTION ABOVE OPTION GROUP
-    # ==========================================================
+# [OCR-DISABLED]     # ==========================================================
+# [OCR-DISABLED]     # EXTRACT QUESTION ABOVE OPTION GROUP
+# [OCR-DISABLED]     # ==========================================================
 
-    def extract_question_before_options(
-        self,
-        items,
-        option_groups,
-        metrics
-    ):
+# [OCR-DISABLED]     def extract_question_before_options(
+# [OCR-DISABLED]         self,
+# [OCR-DISABLED]         items,
+# [OCR-DISABLED]         option_groups,
+# [OCR-DISABLED]         metrics
+# [OCR-DISABLED]     ):
 
-        questions = []
+# [OCR-DISABLED]         questions = []
 
-        for group in option_groups:
+# [OCR-DISABLED]         for group in option_groups:
 
-            if not group:
-                continue
+# [OCR-DISABLED]             if not group:
+# [OCR-DISABLED]                 continue
 
-            group = sorted(
-                group,
-                key=lambda item:
-                    self.get_box(item)[1]
-            )
+# [OCR-DISABLED]             group = sorted(
+# [OCR-DISABLED]                 group,
+# [OCR-DISABLED]                 key=lambda item:
+# [OCR-DISABLED]                     self.get_box(item)[1]
+# [OCR-DISABLED]             )
 
-            first_option = group[0]
+# [OCR-DISABLED]             first_option = group[0]
 
-            _, option_y1, _, _ = (
-                self.get_box(
-                    first_option
-                )
-            )
+# [OCR-DISABLED]             _, option_y1, _, _ = (
+# [OCR-DISABLED]                 self.get_box(
+# [OCR-DISABLED]                     first_option
+# [OCR-DISABLED]                 )
+# [OCR-DISABLED]             )
 
-            candidates = []
+# [OCR-DISABLED]             candidates = []
 
-            max_question_distance = max(
-                350,
-                metrics[
-                    "median_height"
-                ] * 15
-            )
+# [OCR-DISABLED]             max_question_distance = max(
+# [OCR-DISABLED]                 350,
+# [OCR-DISABLED]                 metrics[
+# [OCR-DISABLED]                     "median_height"
+# [OCR-DISABLED]                 ] * 15
+# [OCR-DISABLED]             )
 
-            # --------------------------------------------------
-            # Find meaningful text above first option
-            # --------------------------------------------------
+# [OCR-DISABLED]             # --------------------------------------------------
+# [OCR-DISABLED]             # Find meaningful text above first option
+# [OCR-DISABLED]             # --------------------------------------------------
 
-            for item in items:
+# [OCR-DISABLED]             for item in items:
 
-                if item in group:
-                    continue
+# [OCR-DISABLED]                 if item in group:
+# [OCR-DISABLED]                     continue
 
-                text = self.clean_text(
-                    item["text"]
-                )
+# [OCR-DISABLED]                 text = self.clean_text(
+# [OCR-DISABLED]                     item["text"]
+# [OCR-DISABLED]                 )
 
-                if not text:
-                    continue
+# [OCR-DISABLED]                 if not text:
+# [OCR-DISABLED]                     continue
 
-                if self.is_ui_noise(text):
-                    continue
+# [OCR-DISABLED]                 if self.is_ui_noise(text):
+# [OCR-DISABLED]                     continue
 
-                _, y1, _, y2 = self.get_box(
-                    item
-                )
+# [OCR-DISABLED]                 _, y1, _, y2 = self.get_box(
+# [OCR-DISABLED]                     item
+# [OCR-DISABLED]                 )
 
-                # Must be above first option
-                if y2 > option_y1:
-                    continue
+# [OCR-DISABLED]                 # Must be above first option
+# [OCR-DISABLED]                 if y2 > option_y1:
+# [OCR-DISABLED]                     continue
 
-                distance = (
-                    option_y1 - y2
-                )
+# [OCR-DISABLED]                 distance = (
+# [OCR-DISABLED]                     option_y1 - y2
+# [OCR-DISABLED]                 )
 
-                if distance > max_question_distance:
-                    continue
+# [OCR-DISABLED]                 if distance > max_question_distance:
+# [OCR-DISABLED]                     continue
 
-                candidates.append(
-                    item
-                )
+# [OCR-DISABLED]                 candidates.append(
+# [OCR-DISABLED]                     item
+# [OCR-DISABLED]                 )
 
-            if not candidates:
-                continue
+# [OCR-DISABLED]             if not candidates:
+# [OCR-DISABLED]                 continue
 
-            # --------------------------------------------------
-            # Closest text above options
-            # --------------------------------------------------
+# [OCR-DISABLED]             # --------------------------------------------------
+# [OCR-DISABLED]             # Closest text above options
+# [OCR-DISABLED]             # --------------------------------------------------
 
-            candidates.sort(
-                key=lambda item:
-                    self.get_box(item)[3],
-                reverse=True
-            )
+# [OCR-DISABLED]             candidates.sort(
+# [OCR-DISABLED]                 key=lambda item:
+# [OCR-DISABLED]                     self.get_box(item)[3],
+# [OCR-DISABLED]                 reverse=True
+# [OCR-DISABLED]             )
 
-            closest_item = candidates[0]
+# [OCR-DISABLED]             closest_item = candidates[0]
 
-            selected_items = [
-                closest_item
-            ]
+# [OCR-DISABLED]             selected_items = [
+# [OCR-DISABLED]                 closest_item
+# [OCR-DISABLED]             ]
 
-            _, current_top_y, _, _ = (
-                self.get_box(
-                    closest_item
-                )
-            )
+# [OCR-DISABLED]             _, current_top_y, _, _ = (
+# [OCR-DISABLED]                 self.get_box(
+# [OCR-DISABLED]                     closest_item
+# [OCR-DISABLED]                 )
+# [OCR-DISABLED]             )
 
-            # --------------------------------------------------
-            # Detect wrapped lines above the closest line
-            # --------------------------------------------------
+# [OCR-DISABLED]             # --------------------------------------------------
+# [OCR-DISABLED]             # Detect wrapped lines above the closest line
+# [OCR-DISABLED]             # --------------------------------------------------
 
-            other_candidates = [
+# [OCR-DISABLED]             other_candidates = [
 
-                item
+# [OCR-DISABLED]                 item
 
-                for item in candidates
+# [OCR-DISABLED]                 for item in candidates
 
-                if item is not closest_item
-            ]
+# [OCR-DISABLED]                 if item is not closest_item
+# [OCR-DISABLED]             ]
 
-            other_candidates.sort(
-                key=lambda item:
-                    self.get_box(item)[1],
-                reverse=True
-            )
+# [OCR-DISABLED]             other_candidates.sort(
+# [OCR-DISABLED]                 key=lambda item:
+# [OCR-DISABLED]                     self.get_box(item)[1],
+# [OCR-DISABLED]                 reverse=True
+# [OCR-DISABLED]             )
 
-            for item in other_candidates:
+# [OCR-DISABLED]             for item in other_candidates:
 
-                _, y1, _, y2 = self.get_box(
-                    item
-                )
+# [OCR-DISABLED]                 _, y1, _, y2 = self.get_box(
+# [OCR-DISABLED]                     item
+# [OCR-DISABLED]                 )
 
-                if y2 > current_top_y:
-                    continue
+# [OCR-DISABLED]                 if y2 > current_top_y:
+# [OCR-DISABLED]                     continue
 
-                vertical_gap = (
-                    current_top_y - y2
-                )
+# [OCR-DISABLED]                 vertical_gap = (
+# [OCR-DISABLED]                     current_top_y - y2
+# [OCR-DISABLED]                 )
 
-                if vertical_gap <= metrics[
-                    "line_gap_limit"
-                ]:
+# [OCR-DISABLED]                 if vertical_gap <= metrics[
+# [OCR-DISABLED]                     "line_gap_limit"
+# [OCR-DISABLED]                 ]:
 
-                    selected_items.append(
-                        item
-                    )
+# [OCR-DISABLED]                     selected_items.append(
+# [OCR-DISABLED]                         item
+# [OCR-DISABLED]                     )
 
-                    current_top_y = y1
+# [OCR-DISABLED]                     current_top_y = y1
 
-                else:
+# [OCR-DISABLED]                 else:
 
-                    break
+# [OCR-DISABLED]                     break
 
-            # --------------------------------------------------
-            # Restore reading order
-            # --------------------------------------------------
+# [OCR-DISABLED]             # --------------------------------------------------
+# [OCR-DISABLED]             # Restore reading order
+# [OCR-DISABLED]             # --------------------------------------------------
 
-            selected_items.sort(
-                key=lambda item: (
-                    self.get_box(item)[1],
-                    self.get_box(item)[0]
-                )
-            )
+# [OCR-DISABLED]             selected_items.sort(
+# [OCR-DISABLED]                 key=lambda item: (
+# [OCR-DISABLED]                     self.get_box(item)[1],
+# [OCR-DISABLED]                     self.get_box(item)[0]
+# [OCR-DISABLED]                 )
+# [OCR-DISABLED]             )
 
-            question_text = " ".join(
+# [OCR-DISABLED]             question_text = " ".join(
 
-                self.clean_text(
-                    item["text"]
-                )
+# [OCR-DISABLED]                 self.clean_text(
+# [OCR-DISABLED]                     item["text"]
+# [OCR-DISABLED]                 )
 
-                for item in selected_items
+# [OCR-DISABLED]                 for item in selected_items
 
-            )
+# [OCR-DISABLED]             )
 
-            question_text = self.clean_text(
-                question_text
-            )
+# [OCR-DISABLED]             question_text = self.clean_text(
+# [OCR-DISABLED]                 question_text
+# [OCR-DISABLED]             )
 
-            if len(question_text) < 3:
-                continue
+# [OCR-DISABLED]             if len(question_text) < 3:
+# [OCR-DISABLED]                 continue
 
-            questions.append({
+# [OCR-DISABLED]             questions.append({
 
-                "possible_question":
-                    question_text,
+# [OCR-DISABLED]                 "possible_question":
+# [OCR-DISABLED]                     question_text,
 
-                "confidence":
-                    0.88,
+# [OCR-DISABLED]                 "confidence":
+# [OCR-DISABLED]                     0.88,
 
-                "detection_method":
-                    "question_before_option_group"
-            })
+# [OCR-DISABLED]                 "detection_method":
+# [OCR-DISABLED]                     "question_before_option_group"
+# [OCR-DISABLED]             })
 
-        return questions
+# [OCR-DISABLED]         return questions
 
-    # ==========================================================
-    # EXTRACT QUESTIONS WITH Q1 / Q2 / QUESTION 1
-    # ==========================================================
+# [OCR-DISABLED]     # ==========================================================
+# [OCR-DISABLED]     # EXTRACT QUESTIONS WITH Q1 / Q2 / QUESTION 1
+# [OCR-DISABLED]     # ==========================================================
 
-    def extract_numbered_questions(
-        self,
-        items,
-        metrics
-    ):
+# [OCR-DISABLED]     def extract_numbered_questions(
+# [OCR-DISABLED]         self,
+# [OCR-DISABLED]         items,
+# [OCR-DISABLED]         metrics
+# [OCR-DISABLED]     ):
 
-        questions = []
+# [OCR-DISABLED]         questions = []
 
-        anchors = []
+# [OCR-DISABLED]         anchors = []
 
-        for item in items:
+# [OCR-DISABLED]         for item in items:
 
-            if self.is_question_anchor(
-                item["text"]
-            ):
+# [OCR-DISABLED]             if self.is_question_anchor(
+# [OCR-DISABLED]                 item["text"]
+# [OCR-DISABLED]             ):
 
-                anchors.append(
-                    item
-                )
+# [OCR-DISABLED]                 anchors.append(
+# [OCR-DISABLED]                     item
+# [OCR-DISABLED]                 )
 
-        anchors.sort(
-            key=lambda item:
-            self.get_box(item)[1]
-        )
+# [OCR-DISABLED]         anchors.sort(
+# [OCR-DISABLED]             key=lambda item:
+# [OCR-DISABLED]             self.get_box(item)[1]
+# [OCR-DISABLED]         )
 
-        sorted_items = sorted(
-            items,
-            key=lambda item: (
-                self.get_box(item)[1],
-                self.get_box(item)[0]
-            )
-        )
+# [OCR-DISABLED]         sorted_items = sorted(
+# [OCR-DISABLED]             items,
+# [OCR-DISABLED]             key=lambda item: (
+# [OCR-DISABLED]                 self.get_box(item)[1],
+# [OCR-DISABLED]                 self.get_box(item)[0]
+# [OCR-DISABLED]             )
+# [OCR-DISABLED]         )
 
-        for index, anchor in enumerate(
-            anchors
-        ):
+# [OCR-DISABLED]         for index, anchor in enumerate(
+# [OCR-DISABLED]             anchors
+# [OCR-DISABLED]         ):
 
-            _, anchor_y1, _, _ = self.get_box(
-                anchor
-            )
+# [OCR-DISABLED]             _, anchor_y1, _, _ = self.get_box(
+# [OCR-DISABLED]                 anchor
+# [OCR-DISABLED]             )
 
-            if index + 1 < len(anchors):
+# [OCR-DISABLED]             if index + 1 < len(anchors):
 
-                _, next_y1, _, _ = self.get_box(
-                    anchors[index + 1]
-                )
+# [OCR-DISABLED]                 _, next_y1, _, _ = self.get_box(
+# [OCR-DISABLED]                     anchors[index + 1]
+# [OCR-DISABLED]                 )
 
-            else:
+# [OCR-DISABLED]             else:
 
-                next_y1 = float("inf")
+# [OCR-DISABLED]                 next_y1 = float("inf")
 
-            content_items = []
+# [OCR-DISABLED]             content_items = []
 
-            for item in sorted_items:
+# [OCR-DISABLED]             for item in sorted_items:
 
-                if item is anchor:
-                    continue
+# [OCR-DISABLED]                 if item is anchor:
+# [OCR-DISABLED]                     continue
 
-                text = self.clean_text(
-                    item["text"]
-                )
+# [OCR-DISABLED]                 text = self.clean_text(
+# [OCR-DISABLED]                     item["text"]
+# [OCR-DISABLED]                 )
 
-                if not text:
-                    continue
+# [OCR-DISABLED]                 if not text:
+# [OCR-DISABLED]                     continue
 
-                if self.is_ui_noise(text):
-                    continue
+# [OCR-DISABLED]                 if self.is_ui_noise(text):
+# [OCR-DISABLED]                     continue
 
-                _, y1, _, _ = self.get_box(
-                    item
-                )
+# [OCR-DISABLED]                 _, y1, _, _ = self.get_box(
+# [OCR-DISABLED]                     item
+# [OCR-DISABLED]                 )
 
-                if y1 < anchor_y1:
-                    continue
+# [OCR-DISABLED]                 if y1 < anchor_y1:
+# [OCR-DISABLED]                     continue
 
-                if y1 >= next_y1:
-                    break
+# [OCR-DISABLED]                 if y1 >= next_y1:
+# [OCR-DISABLED]                     break
 
-                # IMPORTANT FIX:
-                # Stop at the first answer option instead of continuing
-                # and accidentally appending it to the question.
-                # This handles OCR such as "OB.$0.05".
-                if self.is_explicit_option(text):
-                    break
+# [OCR-DISABLED]                 # IMPORTANT FIX:
+# [OCR-DISABLED]                 # Stop at the first answer option instead of continuing
+# [OCR-DISABLED]                 # and accidentally appending it to the question.
+# [OCR-DISABLED]                 # This handles OCR such as "OB.$0.05".
+# [OCR-DISABLED]                 if self.is_explicit_option(text):
+# [OCR-DISABLED]                     break
 
-                # Extra protection if a single OCR line contains both
-                # question text and the beginning of an answer option.
-                if self.contains_embedded_option(text):
+# [OCR-DISABLED]                 # Extra protection if a single OCR line contains both
+# [OCR-DISABLED]                 # question text and the beginning of an answer option.
+# [OCR-DISABLED]                 if self.contains_embedded_option(text):
 
-                    cleaned = self.clean_question_candidate(
-                        text
-                    )
+# [OCR-DISABLED]                     cleaned = self.clean_question_candidate(
+# [OCR-DISABLED]                         text
+# [OCR-DISABLED]                     )
 
-                    if cleaned:
+# [OCR-DISABLED]                     if cleaned:
 
-                        item_copy = dict(item)
-                        item_copy["text"] = cleaned
+# [OCR-DISABLED]                         item_copy = dict(item)
+# [OCR-DISABLED]                         item_copy["text"] = cleaned
 
-                        content_items.append(
-                            item_copy
-                        )
+# [OCR-DISABLED]                         content_items.append(
+# [OCR-DISABLED]                             item_copy
+# [OCR-DISABLED]                         )
 
-                    break
+# [OCR-DISABLED]                     break
 
-                content_items.append(
-                    item
-                )
+# [OCR-DISABLED]                 content_items.append(
+# [OCR-DISABLED]                     item
+# [OCR-DISABLED]                 )
 
-            if not content_items:
-                continue
+# [OCR-DISABLED]             if not content_items:
+# [OCR-DISABLED]                 continue
 
-            question_text = " ".join(
+# [OCR-DISABLED]             question_text = " ".join(
 
-                self.clean_text(
-                    item["text"]
-                )
+# [OCR-DISABLED]                 self.clean_text(
+# [OCR-DISABLED]                     item["text"]
+# [OCR-DISABLED]                 )
 
-                for item in content_items
+# [OCR-DISABLED]                 for item in content_items
 
-            )
+# [OCR-DISABLED]             )
 
-            # Final safety cleanup.
-            question_text = self.clean_question_candidate(
-                question_text
-            )
+# [OCR-DISABLED]             # Final safety cleanup.
+# [OCR-DISABLED]             question_text = self.clean_question_candidate(
+# [OCR-DISABLED]                 question_text
+# [OCR-DISABLED]             )
 
-            if len(question_text) < 3:
-                continue
+# [OCR-DISABLED]             if len(question_text) < 3:
+# [OCR-DISABLED]                 continue
 
-            questions.append({
+# [OCR-DISABLED]             questions.append({
 
-                "possible_question":
-                    question_text,
+# [OCR-DISABLED]                 "possible_question":
+# [OCR-DISABLED]                     question_text,
 
-                "confidence":
-                    0.95,
+# [OCR-DISABLED]                 "confidence":
+# [OCR-DISABLED]                     0.95,
 
-                "detection_method":
-                    "question_anchor"
-            })
+# [OCR-DISABLED]                 "detection_method":
+# [OCR-DISABLED]                     "question_anchor"
+# [OCR-DISABLED]             })
 
-        return questions
+# [OCR-DISABLED]         return questions
 
-    # ==========================================================
-    # REMOVE DUPLICATE QUESTIONS
-    # ==========================================================
+# [OCR-DISABLED]     # ==========================================================
+# [OCR-DISABLED]     # REMOVE DUPLICATE QUESTIONS
+# [OCR-DISABLED]     # ==========================================================
 
-    def remove_duplicate_questions(
-        self,
-        questions
-    ):
+# [OCR-DISABLED]     def remove_duplicate_questions(
+# [OCR-DISABLED]         self,
+# [OCR-DISABLED]         questions
+# [OCR-DISABLED]     ):
 
-        grouped_questions = {}
+# [OCR-DISABLED]         grouped_questions = {}
 
-        for question in questions:
+# [OCR-DISABLED]         for question in questions:
 
-            original_text = self.clean_text(
-                question.get(
-                    "possible_question",
-                    ""
-                )
-            )
+# [OCR-DISABLED]             original_text = self.clean_text(
+# [OCR-DISABLED]                 question.get(
+# [OCR-DISABLED]                     "possible_question",
+# [OCR-DISABLED]                     ""
+# [OCR-DISABLED]                 )
+# [OCR-DISABLED]             )
 
-            if not original_text:
-                continue
+# [OCR-DISABLED]             if not original_text:
+# [OCR-DISABLED]                 continue
 
-            # Clean any answer option accidentally appended to the candidate.
-            text = self.clean_question_candidate(
-                original_text
-            )
+# [OCR-DISABLED]             # Clean any answer option accidentally appended to the candidate.
+# [OCR-DISABLED]             text = self.clean_question_candidate(
+# [OCR-DISABLED]                 original_text
+# [OCR-DISABLED]             )
 
-            if not text:
-                continue
+# [OCR-DISABLED]             if not text:
+# [OCR-DISABLED]                 continue
 
-            question_copy = dict(question)
-            question_copy["possible_question"] = text
+# [OCR-DISABLED]             question_copy = dict(question)
+# [OCR-DISABLED]             question_copy["possible_question"] = text
 
-            normalized = re.sub(
-                r"[^a-z0-9]",
-                "",
-                text.lower()
-            )
+# [OCR-DISABLED]             normalized = re.sub(
+# [OCR-DISABLED]                 r"[^a-z0-9]",
+# [OCR-DISABLED]                 "",
+# [OCR-DISABLED]                 text.lower()
+# [OCR-DISABLED]             )
 
-            if not normalized:
-                continue
+# [OCR-DISABLED]             if not normalized:
+# [OCR-DISABLED]                 continue
 
-            grouped_questions.setdefault(
-                normalized,
-                []
-            ).append(
-                question_copy
-            )
+# [OCR-DISABLED]             grouped_questions.setdefault(
+# [OCR-DISABLED]                 normalized,
+# [OCR-DISABLED]                 []
+# [OCR-DISABLED]             ).append(
+# [OCR-DISABLED]                 question_copy
+# [OCR-DISABLED]             )
 
-        final_questions = []
+# [OCR-DISABLED]         final_questions = []
 
-        method_priority = {
+# [OCR-DISABLED]         method_priority = {
 
-            # Prefer option-boundary extraction because it naturally
-            # ends exactly before the answer group.
-            "question_before_option_group": 2,
+# [OCR-DISABLED]             # Prefer option-boundary extraction because it naturally
+# [OCR-DISABLED]             # ends exactly before the answer group.
+# [OCR-DISABLED]             "question_before_option_group": 2,
 
-            "question_anchor": 1
-        }
+# [OCR-DISABLED]             "question_anchor": 1
+# [OCR-DISABLED]         }
 
-        for candidates in grouped_questions.values():
+# [OCR-DISABLED]         for candidates in grouped_questions.values():
 
-            candidates.sort(
-                key=lambda question: (
+# [OCR-DISABLED]             candidates.sort(
+# [OCR-DISABLED]                 key=lambda question: (
 
-                    # Clean candidates first.
-                    1
-                    if not self.contains_embedded_option(
-                        question["possible_question"]
-                    )
-                    else 0,
+# [OCR-DISABLED]                     # Clean candidates first.
+# [OCR-DISABLED]                     1
+# [OCR-DISABLED]                     if not self.contains_embedded_option(
+# [OCR-DISABLED]                         question["possible_question"]
+# [OCR-DISABLED]                     )
+# [OCR-DISABLED]                     else 0,
 
-                    method_priority.get(
-                        question.get(
-                            "detection_method",
-                            ""
-                        ),
-                        0
-                    ),
+# [OCR-DISABLED]                     method_priority.get(
+# [OCR-DISABLED]                         question.get(
+# [OCR-DISABLED]                             "detection_method",
+# [OCR-DISABLED]                             ""
+# [OCR-DISABLED]                         ),
+# [OCR-DISABLED]                         0
+# [OCR-DISABLED]                     ),
 
-                    float(
-                        question.get(
-                            "confidence",
-                            0
-                        )
-                    ),
+# [OCR-DISABLED]                     float(
+# [OCR-DISABLED]                         question.get(
+# [OCR-DISABLED]                             "confidence",
+# [OCR-DISABLED]                             0
+# [OCR-DISABLED]                         )
+# [OCR-DISABLED]                     ),
 
-                    len(
-                        question["possible_question"]
-                    )
-                ),
-                reverse=True
-            )
+# [OCR-DISABLED]                     len(
+# [OCR-DISABLED]                         question["possible_question"]
+# [OCR-DISABLED]                     )
+# [OCR-DISABLED]                 ),
+# [OCR-DISABLED]                 reverse=True
+# [OCR-DISABLED]             )
 
-            final_questions.append(
-                candidates[0]
-            )
+# [OCR-DISABLED]             final_questions.append(
+# [OCR-DISABLED]                 candidates[0]
+# [OCR-DISABLED]             )
 
-        return final_questions
+# [OCR-DISABLED]         return final_questions
 
-    # ==========================================================
-    # DETECT ALL POSSIBLE QUESTIONS
-    # ==========================================================
+# [OCR-DISABLED]     # ==========================================================
+# [OCR-DISABLED]     # DETECT ALL POSSIBLE QUESTIONS
+# [OCR-DISABLED]     # ==========================================================
 
-    def detect_possible_questions(
-        self,
-        items
-    ):
+# [OCR-DISABLED]     def detect_possible_questions(
+# [OCR-DISABLED]         self,
+# [OCR-DISABLED]         items
+# [OCR-DISABLED]     ):
 
-        # Remove obvious UI noise
-        valid_items = []
+# [OCR-DISABLED]         # Remove obvious UI noise
+# [OCR-DISABLED]         valid_items = []
 
-        for item in items:
+# [OCR-DISABLED]         for item in items:
 
-            text = self.clean_text(
-                item["text"]
-            )
+# [OCR-DISABLED]             text = self.clean_text(
+# [OCR-DISABLED]                 item["text"]
+# [OCR-DISABLED]             )
 
-            if not text:
-                continue
+# [OCR-DISABLED]             if not text:
+# [OCR-DISABLED]                 continue
 
-            if self.is_ui_noise(text):
-                continue
+# [OCR-DISABLED]             if self.is_ui_noise(text):
+# [OCR-DISABLED]                 continue
 
-            valid_items.append(
-                item
-            )
+# [OCR-DISABLED]             valid_items.append(
+# [OCR-DISABLED]                 item
+# [OCR-DISABLED]             )
 
-        # ------------------------------------------------------
-        # Calculate dynamic metrics
-        # ------------------------------------------------------
+# [OCR-DISABLED]         # ------------------------------------------------------
+# [OCR-DISABLED]         # Calculate dynamic metrics
+# [OCR-DISABLED]         # ------------------------------------------------------
 
-        metrics = self.calculate_layout_metrics(
-            valid_items
-        )
+# [OCR-DISABLED]         metrics = self.calculate_layout_metrics(
+# [OCR-DISABLED]             valid_items
+# [OCR-DISABLED]         )
 
-        print("\nLayout metrics:")
+# [OCR-DISABLED]         print("\nLayout metrics:")
 
-        print(
-            json.dumps(
-                metrics,
-                indent=4
-            )
-        )
+# [OCR-DISABLED]         print(
+# [OCR-DISABLED]             json.dumps(
+# [OCR-DISABLED]                 metrics,
+# [OCR-DISABLED]                 indent=4
+# [OCR-DISABLED]             )
+# [OCR-DISABLED]         )
 
-        # ------------------------------------------------------
-        # METHOD 1:
-        # Q1 / Q2 / Question 1
-        # ------------------------------------------------------
+# [OCR-DISABLED]         # ------------------------------------------------------
+# [OCR-DISABLED]         # METHOD 1:
+# [OCR-DISABLED]         # Q1 / Q2 / Question 1
+# [OCR-DISABLED]         # ------------------------------------------------------
 
-        numbered_questions = (
-            self.extract_numbered_questions(
-                valid_items,
-                metrics
-            )
-        )
+# [OCR-DISABLED]         numbered_questions = (
+# [OCR-DISABLED]             self.extract_numbered_questions(
+# [OCR-DISABLED]                 valid_items,
+# [OCR-DISABLED]                 metrics
+# [OCR-DISABLED]             )
+# [OCR-DISABLED]         )
 
-        # ------------------------------------------------------
-        # METHOD 2:
-        # A/B/C/D explicit options
-        # ------------------------------------------------------
+# [OCR-DISABLED]         # ------------------------------------------------------
+# [OCR-DISABLED]         # METHOD 2:
+# [OCR-DISABLED]         # A/B/C/D explicit options
+# [OCR-DISABLED]         # ------------------------------------------------------
 
-        explicit_option_groups = (
-            self.detect_explicit_option_groups(
-                valid_items,
-                metrics
-            )
-        )
+# [OCR-DISABLED]         explicit_option_groups = (
+# [OCR-DISABLED]             self.detect_explicit_option_groups(
+# [OCR-DISABLED]                 valid_items,
+# [OCR-DISABLED]                 metrics
+# [OCR-DISABLED]             )
+# [OCR-DISABLED]         )
 
-        # ------------------------------------------------------
-        # METHOD 3:
-        # Plain vertically aligned options
-        # ------------------------------------------------------
+# [OCR-DISABLED]         # ------------------------------------------------------
+# [OCR-DISABLED]         # METHOD 3:
+# [OCR-DISABLED]         # Plain vertically aligned options
+# [OCR-DISABLED]         # ------------------------------------------------------
 
-        layout_option_groups = (
-            self.detect_layout_option_groups(
-                valid_items,
-                metrics
-            )
-        )
+# [OCR-DISABLED]         layout_option_groups = (
+# [OCR-DISABLED]             self.detect_layout_option_groups(
+# [OCR-DISABLED]                 valid_items,
+# [OCR-DISABLED]                 metrics
+# [OCR-DISABLED]             )
+# [OCR-DISABLED]         )
 
-        print(
-            f"\nExplicit option groups: "
-            f"{len(explicit_option_groups)}"
-        )
+# [OCR-DISABLED]         print(
+# [OCR-DISABLED]             f"\nExplicit option groups: "
+# [OCR-DISABLED]             f"{len(explicit_option_groups)}"
+# [OCR-DISABLED]         )
 
-        print(
-            f"Layout option groups: "
-            f"{len(layout_option_groups)}"
-        )
+# [OCR-DISABLED]         print(
+# [OCR-DISABLED]             f"Layout option groups: "
+# [OCR-DISABLED]             f"{len(layout_option_groups)}"
+# [OCR-DISABLED]         )
 
-        # ------------------------------------------------------
-        # Combine option groups
-        # ------------------------------------------------------
+# [OCR-DISABLED]         # ------------------------------------------------------
+# [OCR-DISABLED]         # Combine option groups
+# [OCR-DISABLED]         # ------------------------------------------------------
 
-        all_option_groups = (
-            explicit_option_groups
-            +
-            layout_option_groups
-        )
+# [OCR-DISABLED]         all_option_groups = (
+# [OCR-DISABLED]             explicit_option_groups
+# [OCR-DISABLED]             +
+# [OCR-DISABLED]             layout_option_groups
+# [OCR-DISABLED]         )
 
-        all_option_groups = (
-            self.remove_duplicate_groups(
-                all_option_groups
-            )
-        )
+# [OCR-DISABLED]         all_option_groups = (
+# [OCR-DISABLED]             self.remove_duplicate_groups(
+# [OCR-DISABLED]                 all_option_groups
+# [OCR-DISABLED]             )
+# [OCR-DISABLED]         )
 
-        # ------------------------------------------------------
-        # Extract questions above options
-        # ------------------------------------------------------
+# [OCR-DISABLED]         # ------------------------------------------------------
+# [OCR-DISABLED]         # Extract questions above options
+# [OCR-DISABLED]         # ------------------------------------------------------
 
-        layout_questions = (
-            self.extract_question_before_options(
-                valid_items,
-                all_option_groups,
-                metrics
-            )
-        )
+# [OCR-DISABLED]         layout_questions = (
+# [OCR-DISABLED]             self.extract_question_before_options(
+# [OCR-DISABLED]                 valid_items,
+# [OCR-DISABLED]                 all_option_groups,
+# [OCR-DISABLED]                 metrics
+# [OCR-DISABLED]             )
+# [OCR-DISABLED]         )
 
-        # ------------------------------------------------------
-        # Combine all question detection methods
-        # ------------------------------------------------------
+# [OCR-DISABLED]         # ------------------------------------------------------
+# [OCR-DISABLED]         # Combine all question detection methods
+# [OCR-DISABLED]         # ------------------------------------------------------
 
-        all_questions = (
-            numbered_questions
-            +
-            layout_questions
-        )
+# [OCR-DISABLED]         all_questions = (
+# [OCR-DISABLED]             numbered_questions
+# [OCR-DISABLED]             +
+# [OCR-DISABLED]             layout_questions
+# [OCR-DISABLED]         )
 
-        all_questions = (
-            self.remove_duplicate_questions(
-                all_questions
-            )
-        )
+# [OCR-DISABLED]         all_questions = (
+# [OCR-DISABLED]             self.remove_duplicate_questions(
+# [OCR-DISABLED]                 all_questions
+# [OCR-DISABLED]             )
+# [OCR-DISABLED]         )
 
-        return all_questions
+# [OCR-DISABLED]         return all_questions
 
-    # ==========================================================
-    # MAIN PROCESS IMAGE METHOD
-    # ==========================================================
+# [OCR-DISABLED]     # ==========================================================
+# [OCR-DISABLED]     # MAIN PROCESS IMAGE METHOD
+# [OCR-DISABLED]     # ==========================================================
 
-    def process_image(
-        self,
-        image_path
-    ):
+# [OCR-DISABLED]     def process_image(
+# [OCR-DISABLED]         self,
+# [OCR-DISABLED]         image_path
+# [OCR-DISABLED]     ):
 
-        print("\n" + "=" * 70)
+# [OCR-DISABLED]         print("\n" + "=" * 70)
 
-        print(
-            "SMART QUESTION OCR"
-        )
+# [OCR-DISABLED]         print(
+# [OCR-DISABLED]             "SMART QUESTION OCR"
+# [OCR-DISABLED]         )
 
-        print("=" * 70)
+# [OCR-DISABLED]         print("=" * 70)
 
-        # ------------------------------------------------------
-        # STEP 1: OCR
-        # ------------------------------------------------------
+# [OCR-DISABLED]         # ------------------------------------------------------
+# [OCR-DISABLED]         # STEP 1: OCR
+# [OCR-DISABLED]         # ------------------------------------------------------
 
-        items = self.extract_ocr_items(
-            image_path
-        )
+# [OCR-DISABLED]         items = self.extract_ocr_items(
+# [OCR-DISABLED]             image_path
+# [OCR-DISABLED]         )
 
-        print(
-            f"\nOCR items detected: "
-            f"{len(items)}"
-        )
+# [OCR-DISABLED]         print(
+# [OCR-DISABLED]             f"\nOCR items detected: "
+# [OCR-DISABLED]             f"{len(items)}"
+# [OCR-DISABLED]         )
 
-        # ------------------------------------------------------
-        # STEP 2: QUESTION DETECTION
-        # ------------------------------------------------------
+# [OCR-DISABLED]         # ------------------------------------------------------
+# [OCR-DISABLED]         # STEP 2: QUESTION DETECTION
+# [OCR-DISABLED]         # ------------------------------------------------------
 
-        print(
-            "\nDetecting possible questions..."
-        )
+# [OCR-DISABLED]         print(
+# [OCR-DISABLED]             "\nDetecting possible questions..."
+# [OCR-DISABLED]         )
 
-        possible_questions = (
-            self.detect_possible_questions(
-                items
-            )
-        )
+# [OCR-DISABLED]         possible_questions = (
+# [OCR-DISABLED]             self.detect_possible_questions(
+# [OCR-DISABLED]                 items
+# [OCR-DISABLED]             )
+# [OCR-DISABLED]         )
 
-        print(
-            f"\nPossible questions detected: "
-            f"{len(possible_questions)}"
-        )
+# [OCR-DISABLED]         print(
+# [OCR-DISABLED]             f"\nPossible questions detected: "
+# [OCR-DISABLED]             f"{len(possible_questions)}"
+# [OCR-DISABLED]         )
 
-        # ------------------------------------------------------
-        # IMPORTANT
-        #
-        # This exact result will be used both for:
-        #
-        # 1. Terminal output
-        # 2. JSON file
-        # ------------------------------------------------------
+# [OCR-DISABLED]         # ------------------------------------------------------
+# [OCR-DISABLED]         # IMPORTANT
+# [OCR-DISABLED]         #
+# [OCR-DISABLED]         # This exact result will be used both for:
+# [OCR-DISABLED]         #
+# [OCR-DISABLED]         # 1. Terminal output
+# [OCR-DISABLED]         # 2. JSON file
+# [OCR-DISABLED]         # ------------------------------------------------------
 
-        return {
+# [OCR-DISABLED]         return {
 
-            "possible_questions":
-                possible_questions,
+# [OCR-DISABLED]             "possible_questions":
+# [OCR-DISABLED]                 possible_questions,
 
-            "raw_items":
-                items
-        }
+# [OCR-DISABLED]             "raw_items":
+# [OCR-DISABLED]                 items
+# [OCR-DISABLED]         }
 
 
-# ==============================================================
-# MAIN PROGRAM
-# ==============================================================
+# [OCR-DISABLED] # ==============================================================
+# [OCR-DISABLED] # MAIN PROGRAM
+# [OCR-DISABLED] # ==============================================================
 
-if __name__ == "__main__":
+# [OCR-DISABLED] if __name__ == "__main__":
 
-    # ==========================================================
-    # IMAGE PATH
-    # ==========================================================
+# [OCR-DISABLED]     # ==========================================================
+# [OCR-DISABLED]     # IMAGE PATH
+# [OCR-DISABLED]     # ==========================================================
 
-    image_path = (
-        "./screenshots/2026-08-29/"
-        # "screenshot-2026-08-29T15-05-27-962334.png"
-        # "screenshot-2026-08-28T16-00-59-615254.png"
-        # "screenshot-2026-08-28T15-59-59-616281.png"
-        "screenshot-2026-08-29T18-44-43-097149.png"
-    )
+# [OCR-DISABLED]     image_path = (
+# [OCR-DISABLED]         "./screenshots/2026-08-29/"
+# [OCR-DISABLED]         # "screenshot-2026-08-29T15-05-27-962334.png"
+# [OCR-DISABLED]         # "screenshot-2026-08-28T16-00-59-615254.png"
+# [OCR-DISABLED]         # "screenshot-2026-08-28T15-59-59-616281.png"
+# [OCR-DISABLED]         "screenshot-2026-08-29T18-44-43-097149.png"
+# [OCR-DISABLED]     )
 
-    # ==========================================================
-    # OUTPUT JSON PATH
-    #
-    # Saves JSON in the SAME folder as this Python file.
-    # ==========================================================
+# [OCR-DISABLED]     # ==========================================================
+# [OCR-DISABLED]     # OUTPUT JSON PATH
+# [OCR-DISABLED]     #
+# [OCR-DISABLED]     # Saves JSON in the SAME folder as this Python file.
+# [OCR-DISABLED]     # ==========================================================
 
-    script_directory = os.path.dirname(
-        os.path.abspath(__file__)
-    )
+# [OCR-DISABLED]     script_directory = os.path.dirname(
+# [OCR-DISABLED]         os.path.abspath(__file__)
+# [OCR-DISABLED]     )
 
-    output_file = os.path.join(
-        script_directory,
-        "question_ocr_output.json"
-    )
+# [OCR-DISABLED]     output_file = os.path.join(
+# [OCR-DISABLED]         script_directory,
+# [OCR-DISABLED]         "question_ocr_output.json"
+# [OCR-DISABLED]     )
 
-    # ==========================================================
-    # CREATE OCR ENGINE
-    # ==========================================================
+# [OCR-DISABLED]     # ==========================================================
+# [OCR-DISABLED]     # CREATE OCR ENGINE
+# [OCR-DISABLED]     # ==========================================================
 
-    smart_ocr = SmartQuestionOCR()
+# [OCR-DISABLED]     smart_ocr = SmartQuestionOCR()
 
-    # ==========================================================
-    # PROCESS IMAGE
-    # ==========================================================
+# [OCR-DISABLED]     # ==========================================================
+# [OCR-DISABLED]     # PROCESS IMAGE
+# [OCR-DISABLED]     # ==========================================================
 
-    result = smart_ocr.process_image(
-        image_path
-    )
+# [OCR-DISABLED]     result = smart_ocr.process_image(
+# [OCR-DISABLED]         image_path
+# [OCR-DISABLED]     )
 
-    # ==========================================================
-    # PRINT POSSIBLE QUESTIONS
-    # ==========================================================
+# [OCR-DISABLED]     # ==========================================================
+# [OCR-DISABLED]     # PRINT POSSIBLE QUESTIONS
+# [OCR-DISABLED]     # ==========================================================
 
-    print("\n\n" + "=" * 70)
+# [OCR-DISABLED]     print("\n\n" + "=" * 70)
 
-    print(
-        "POSSIBLE QUESTIONS"
-    )
+# [OCR-DISABLED]     print(
+# [OCR-DISABLED]         "POSSIBLE QUESTIONS"
+# [OCR-DISABLED]     )
 
-    print("=" * 70)
+# [OCR-DISABLED]     print("=" * 70)
 
-    print(
-        json.dumps(
-            result["possible_questions"],
-            indent=4,
-            ensure_ascii=False
-        )
-    )
+# [OCR-DISABLED]     print(
+# [OCR-DISABLED]         json.dumps(
+# [OCR-DISABLED]             result["possible_questions"],
+# [OCR-DISABLED]             indent=4,
+# [OCR-DISABLED]             ensure_ascii=False
+# [OCR-DISABLED]         )
+# [OCR-DISABLED]     )
 
-    # ==========================================================
-    # PRINT RAW OCR ITEMS
-    # ==========================================================
+# [OCR-DISABLED]     # ==========================================================
+# [OCR-DISABLED]     # PRINT RAW OCR ITEMS
+# [OCR-DISABLED]     # ==========================================================
 
-    print("\n\n" + "=" * 70)
+# [OCR-DISABLED]     print("\n\n" + "=" * 70)
 
-    print(
-        "RAW OCR ITEMS"
-    )
+# [OCR-DISABLED]     print(
+# [OCR-DISABLED]         "RAW OCR ITEMS"
+# [OCR-DISABLED]     )
 
-    print("=" * 70)
+# [OCR-DISABLED]     print("=" * 70)
 
-    print(
-        json.dumps(
-            result["raw_items"],
-            indent=4,
-            ensure_ascii=False
-        )
-    )
+# [OCR-DISABLED]     print(
+# [OCR-DISABLED]         json.dumps(
+# [OCR-DISABLED]             result["raw_items"],
+# [OCR-DISABLED]             indent=4,
+# [OCR-DISABLED]             ensure_ascii=False
+# [OCR-DISABLED]         )
+# [OCR-DISABLED]     )
 
-    # ==========================================================
-    # SAVE THE EXACT SAME RESULT TO JSON
-    # ==========================================================
+# [OCR-DISABLED]     # ==========================================================
+# [OCR-DISABLED]     # SAVE THE EXACT SAME RESULT TO JSON
+# [OCR-DISABLED]     # ==========================================================
 
-    print("\n" + "=" * 70)
+# [OCR-DISABLED]     print("\n" + "=" * 70)
 
-    print(
-        "SAVING JSON FILE"
-    )
+# [OCR-DISABLED]     print(
+# [OCR-DISABLED]         "SAVING JSON FILE"
+# [OCR-DISABLED]     )
 
-    print("=" * 70)
+# [OCR-DISABLED]     print("=" * 70)
 
-    # IMPORTANT:
-    # We save `result` directly.
-    #
-    # No separate old `questions` variable.
-    # No old `lines` structure.
-    #
-    # Therefore terminal and JSON will always match.
+# [OCR-DISABLED]     # IMPORTANT:
+# [OCR-DISABLED]     # We save `result` directly.
+# [OCR-DISABLED]     #
+# [OCR-DISABLED]     # No separate old `questions` variable.
+# [OCR-DISABLED]     # No old `lines` structure.
+# [OCR-DISABLED]     #
+# [OCR-DISABLED]     # Therefore terminal and JSON will always match.
 
-    with open(
-        output_file,
-        "w",
-        encoding="utf-8"
-    ) as file:
+# [OCR-DISABLED]     with open(
+# [OCR-DISABLED]         output_file,
+# [OCR-DISABLED]         "w",
+# [OCR-DISABLED]         encoding="utf-8"
+# [OCR-DISABLED]     ) as file:
 
-        json.dump(
-            result,
-            file,
-            indent=4,
-            ensure_ascii=False
-        )
+# [OCR-DISABLED]         json.dump(
+# [OCR-DISABLED]             result,
+# [OCR-DISABLED]             file,
+# [OCR-DISABLED]             indent=4,
+# [OCR-DISABLED]             ensure_ascii=False
+# [OCR-DISABLED]         )
 
-    # ==========================================================
-    # VERIFY JSON WAS ACTUALLY WRITTEN
-    # ==========================================================
+# [OCR-DISABLED]     # ==========================================================
+# [OCR-DISABLED]     # VERIFY JSON WAS ACTUALLY WRITTEN
+# [OCR-DISABLED]     # ==========================================================
 
-    if os.path.exists(output_file):
+# [OCR-DISABLED]     if os.path.exists(output_file):
 
-        print(
-            "\nJSON saved successfully."
-        )
+# [OCR-DISABLED]         print(
+# [OCR-DISABLED]             "\nJSON saved successfully."
+# [OCR-DISABLED]         )
 
-        print(
-            f"\nExact JSON path:\n"
-            f"{output_file}"
-        )
+# [OCR-DISABLED]         print(
+# [OCR-DISABLED]             f"\nExact JSON path:\n"
+# [OCR-DISABLED]             f"{output_file}"
+# [OCR-DISABLED]         )
 
-        print(
-            f"\nQuestions saved: "
-            f"{len(result['possible_questions'])}"
-        )
+# [OCR-DISABLED]         print(
+# [OCR-DISABLED]             f"\nQuestions saved: "
+# [OCR-DISABLED]             f"{len(result['possible_questions'])}"
+# [OCR-DISABLED]         )
 
-        print(
-            f"Raw OCR items saved: "
-            f"{len(result['raw_items'])}"
-        )
+# [OCR-DISABLED]         print(
+# [OCR-DISABLED]             f"Raw OCR items saved: "
+# [OCR-DISABLED]             f"{len(result['raw_items'])}"
+# [OCR-DISABLED]         )
 
-    else:
+# [OCR-DISABLED]     else:
 
-        print(
-            "\nERROR: JSON file was not created."
-        )
+# [OCR-DISABLED]         print(
+# [OCR-DISABLED]             "\nERROR: JSON file was not created."
+# [OCR-DISABLED]         )

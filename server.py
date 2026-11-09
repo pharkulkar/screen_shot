@@ -7,7 +7,7 @@ Serves a lightweight web gallery of all captured screenshots on:
     http://localhost:3000
 
 Organised by date, newest first. Includes interactive hover actions:
-Solution (OCR), Edit (Crop/Draw with Save/Save As), and Delete.
+Edit (Crop/Draw with Save/Save As), and Delete.  [OCR-DISABLED] old: Solution (OCR), Edit (Crop/Draw with Save/Save As), and Delete.
 Also serves the `/typings` live overlay page over Server-Sent Events.
 No external CSS/JS frameworks — plain HTML + inline styles, works offline.
 
@@ -46,22 +46,22 @@ except ImportError:
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 
 # OpenAI helper (ask / ask_stream). Imported defensively so the server still
-# boots for gallery/OCR even if the module or SDK has an issue.
+# boots for the gallery even if the module or SDK has an issue.
 try:
     import ai as ai_helper
 except Exception:  # noqa: BLE001
     ai_helper = None
 
-# Data layer (SQLite records + caching) and unified OCR, imported defensively.
+# Data layer (SQLite records + caching), imported defensively.
 try:
     import db as db_layer
 except Exception:  # noqa: BLE001
     db_layer = None
 
-try:
-    import ocr_engine
-except Exception:  # noqa: BLE001
-    ocr_engine = None
+# [OCR-DISABLED] try:
+# [OCR-DISABLED]     import ocr_engine
+# [OCR-DISABLED] except Exception:  # noqa: BLE001
+# [OCR-DISABLED]     ocr_engine = None
 
 try:
     import conversation as convo
@@ -85,32 +85,32 @@ except ImportError:
 import numpy as np
 from PIL import Image
 
-# easyocr pulls in torch, which can be heavy or (on some locked-down Windows
-# machines) blocked by Application Control policy. The default engine is
-# "paddle" (see ocr_engine.py), so we only build the easyocr Reader when it's
-# actually needed, and never let an easyocr/torch failure take down the server.
-reader = None
-try:
-    import easyocr
-    # 'en' for English. Set gpu=False if you don't have CUDA set up.
-    reader = easyocr.Reader(['en'], gpu=False)
+# [OCR-DISABLED] # easyocr pulls in torch, which can be heavy or (on some locked-down Windows
+# [OCR-DISABLED] # machines) blocked by Application Control policy. The default engine is
+# [OCR-DISABLED] # "paddle" (see ocr_engine.py), so we only build the easyocr Reader when it's
+# [OCR-DISABLED] # actually needed, and never let an easyocr/torch failure take down the server.
+# [OCR-DISABLED] reader = None
+# [OCR-DISABLED] try:
+# [OCR-DISABLED]     import easyocr
+# [OCR-DISABLED]     # 'en' for English. Set gpu=False if you don't have CUDA set up.
+# [OCR-DISABLED]     reader = easyocr.Reader(['en'], gpu=False)
 
-    # Share the already-loaded easyocr reader with the unified OCR layer so the
-    # "easyocr" engine path doesn't build a second reader.
-    if ocr_engine is not None:
-        ocr_engine.set_easyocr_reader(reader)
-except Exception as exc:  # noqa: BLE001
-    logging.getLogger(__name__).warning(
-        "easyocr unavailable (%s); 'easyocr' engine disabled, "
-        "'paddle' engine still works.", exc
-    )
+# [OCR-DISABLED]     # Share the already-loaded easyocr reader with the unified OCR layer so the
+# [OCR-DISABLED]     # "easyocr" engine path doesn't build a second reader.
+# [OCR-DISABLED]     if ocr_engine is not None:
+# [OCR-DISABLED]         ocr_engine.set_easyocr_reader(reader)
+# [OCR-DISABLED] except Exception as exc:  # noqa: BLE001
+# [OCR-DISABLED]     logging.getLogger(__name__).warning(
+# [OCR-DISABLED]         "easyocr unavailable (%s); 'easyocr' engine disabled, "
+# [OCR-DISABLED]         "'paddle' engine still works.", exc
+# [OCR-DISABLED]     )
 
 # Initialize the SQLite data layer (records + answer caching).
 if db_layer is not None:
     db_layer.init_db()
 
 # ── Interview auto-detection (smart question detection + answering) ───────────
-# Imported defensively so the gallery/OCR server still boots even if a new
+# Imported defensively so the gallery server still boots even if a new
 # module has an issue. Builds one shared SessionManager used by the
 # /ws/interview WebSocket and the /api/interview/* REST routes.
 try:
@@ -377,7 +377,7 @@ GALLERY_TEMPLATE = """
       box-shadow: 0 8px 40px rgba(0,0,0,0.6);
     }
 
-    /* Solution Modal */
+    /* [OCR-DISABLED] Solution/OCR modal styles
     .ocr-container {
       background: #181818;
       border: 1px solid #333;
@@ -449,6 +449,7 @@ GALLERY_TEMPLATE = """
       resize: none;
       font-size: 0.85rem;
     }
+    */
 
     /* Editor Modal */
     .editor-container {
@@ -503,7 +504,7 @@ GALLERY_TEMPLATE = """
         <div class="card-thumb-wrapper" onclick="openLb('/img/{{ date }}/{{ f }}','{{ f }}')">
           <img src="/thumb/{{ date }}/{{ f }}" alt="{{ f }}" loading="lazy" />
           <div class="card-actions" onclick="event.stopPropagation();">
-            <button class="action-btn" onclick="openSolution('{{ date }}', '{{ f }}')">⚡ Solution</button>
+            <!-- [OCR-DISABLED] <button class="action-btn" onclick="openSolution('{{ date }}', '{{ f }}')">⚡ Solution</button> -->
             <button class="action-btn" onclick="openEditor('{{ date }}', '{{ f }}')">✏️ Edit</button>
             <button class="action-btn delete" onclick="deleteImage('{{ date }}', '{{ f }}', 'card-{{ date }}-{{ loop.index }}')">🗑️</button>
           </div>
@@ -525,7 +526,7 @@ GALLERY_TEMPLATE = """
   <div id="lb-name" style="font-size:0.78rem; color:#666;"></div>
 </div>
 
-<!-- Solution/OCR Modal -->
+<!-- [OCR-DISABLED] Solution/OCR Modal
 <div id="ocr-modal" class="modal-overlay">
   <span class="modal-close" onclick="closeModal('ocr-modal')">&#x2715;</span>
   <div class="ocr-container">
@@ -547,6 +548,7 @@ GALLERY_TEMPLATE = """
     </div>
   </div>
 </div>
+-->
 
 <!-- Canvas Editor Modal -->
 <div id="edit-modal" class="modal-overlay">
@@ -578,82 +580,82 @@ GALLERY_TEMPLATE = """
     document.getElementById('lb').classList.add('open');
   }
 
-  // --- Solution (OCR) Functionality ---
-  let currentOcrDate = '', currentOcrFile = '';
+// [OCR-DISABLED]   // --- Solution (OCR) Functionality ---
+// [OCR-DISABLED]   let currentOcrDate = '', currentOcrFile = '';
 
-  async function openSolution(date, filename) {
-    currentOcrDate = date;
-    currentOcrFile = filename;
-    const modal = document.getElementById('ocr-modal');
-    const select = document.getElementById('ocr-version-select');
+// [OCR-DISABLED]   async function openSolution(date, filename) {
+// [OCR-DISABLED]     currentOcrDate = date;
+// [OCR-DISABLED]     currentOcrFile = filename;
+// [OCR-DISABLED]     const modal = document.getElementById('ocr-modal');
+// [OCR-DISABLED]     const select = document.getElementById('ocr-version-select');
     
-    modal.classList.add('open');
-    select.innerHTML = '<option>Loading versions...</option>';
+// [OCR-DISABLED]     modal.classList.add('open');
+// [OCR-DISABLED]     select.innerHTML = '<option>Loading versions...</option>';
 
-    // Fetch related versions of the image
-    try {
-      const res = await fetch(`/api/versions/${date}/${filename}`);
-      const data = await res.json();
-      select.innerHTML = '';
-      if (data.versions && data.versions.length > 0) {
-        data.versions.forEach(v => {
-          const opt = document.createElement('option');
-          opt.value = v;
-          opt.textContent = v;
-          if (v === filename) opt.selected = true;
-          select.appendChild(opt);
-        });
-        select.style.display = 'inline-block';
-      } else {
-        select.style.display = 'none';
-      }
-    } catch(e) {
-      select.style.display = 'none';
-    }
+// [OCR-DISABLED]     // Fetch related versions of the image
+// [OCR-DISABLED]     try {
+// [OCR-DISABLED]       const res = await fetch(`/api/versions/${date}/${filename}`);
+// [OCR-DISABLED]       const data = await res.json();
+// [OCR-DISABLED]       select.innerHTML = '';
+// [OCR-DISABLED]       if (data.versions && data.versions.length > 0) {
+// [OCR-DISABLED]         data.versions.forEach(v => {
+// [OCR-DISABLED]           const opt = document.createElement('option');
+// [OCR-DISABLED]           opt.value = v;
+// [OCR-DISABLED]           opt.textContent = v;
+// [OCR-DISABLED]           if (v === filename) opt.selected = true;
+// [OCR-DISABLED]           select.appendChild(opt);
+// [OCR-DISABLED]         });
+// [OCR-DISABLED]         select.style.display = 'inline-block';
+// [OCR-DISABLED]       } else {
+// [OCR-DISABLED]         select.style.display = 'none';
+// [OCR-DISABLED]       }
+// [OCR-DISABLED]     } catch(e) {
+// [OCR-DISABLED]       select.style.display = 'none';
+// [OCR-DISABLED]     }
 
-    runOcr(date, filename);
-  }
+// [OCR-DISABLED]     runOcr(date, filename);
+// [OCR-DISABLED]   }
 
-  function switchOcrVersion() {
-    const selectedFile = document.getElementById('ocr-version-select').value;
-    runOcr(currentOcrDate, selectedFile);
-  }
+// [OCR-DISABLED]   function switchOcrVersion() {
+// [OCR-DISABLED]     const selectedFile = document.getElementById('ocr-version-select').value;
+// [OCR-DISABLED]     runOcr(currentOcrDate, selectedFile);
+// [OCR-DISABLED]   }
 
-  async function runOcr(date, filename) {
-    const imgEl = document.getElementById('ocr-img');
-    const outputEl = document.getElementById('ocr-output');
-    const statusEl = document.getElementById('ocr-status');
+// [OCR-DISABLED]   async function runOcr(date, filename) {
+// [OCR-DISABLED]     const imgEl = document.getElementById('ocr-img');
+// [OCR-DISABLED]     const outputEl = document.getElementById('ocr-output');
+// [OCR-DISABLED]     const statusEl = document.getElementById('ocr-status');
 
-    imgEl.src = `/img/${date}/${filename}`;
-    outputEl.value = '';
-    statusEl.textContent = 'Extracting text via OCR...';
+// [OCR-DISABLED]     imgEl.src = `/img/${date}/${filename}`;
+// [OCR-DISABLED]     outputEl.value = '';
+// [OCR-DISABLED]     statusEl.textContent = 'Extracting text via OCR...';
 
-    try {
-      const res = await fetch('/api/ocr', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ date, filename })
-      });
-      const data = await res.json();
-      if (data.success) {
-        outputEl.value = data.text || 'No text detected in image.';
-        statusEl.textContent = 'Extraction Complete';
-      } else {
-        outputEl.value = '';
-        statusEl.textContent = 'Error: ' + (data.error || 'Failed to process OCR.');
-      }
-    } catch (err) {
-      statusEl.textContent = 'Network error running OCR.';
-    }
-  }
+// [OCR-DISABLED]     try {
+// [OCR-DISABLED]       const res = await fetch('/api/ocr', {
+// [OCR-DISABLED]         method: 'POST',
+// [OCR-DISABLED]         headers: { 'Content-Type': 'application/json' },
+// [OCR-DISABLED]         body: JSON.stringify({ date, filename })
+// [OCR-DISABLED]       });
+// [OCR-DISABLED]       const data = await res.json();
+// [OCR-DISABLED]       if (data.success) {
+// [OCR-DISABLED]         outputEl.value = data.text || 'No text detected in image.';
+// [OCR-DISABLED]         statusEl.textContent = 'Extraction Complete';
+// [OCR-DISABLED]       } else {
+// [OCR-DISABLED]         outputEl.value = '';
+// [OCR-DISABLED]         statusEl.textContent = 'Error: ' + (data.error || 'Failed to process OCR.');
+// [OCR-DISABLED]       }
+// [OCR-DISABLED]     } catch (err) {
+// [OCR-DISABLED]       statusEl.textContent = 'Network error running OCR.';
+// [OCR-DISABLED]     }
+// [OCR-DISABLED]   }
 
-  function copyOcrText() {
-    const text = document.getElementById('ocr-output').value;
-    if (text) {
-      navigator.clipboard.writeText(text);
-      alert('Copied to clipboard!');
-    }
-  }
+// [OCR-DISABLED]   function copyOcrText() {
+// [OCR-DISABLED]     const text = document.getElementById('ocr-output').value;
+// [OCR-DISABLED]     if (text) {
+// [OCR-DISABLED]       navigator.clipboard.writeText(text);
+// [OCR-DISABLED]       alert('Copied to clipboard!');
+// [OCR-DISABLED]     }
+// [OCR-DISABLED]   }
 
   // --- Delete Functionality ---
   async function deleteImage(date, filename, cardId) {
@@ -1143,43 +1145,43 @@ def api_versions(date: str, filename: str):
     ])
     return jsonify({"versions": versions})
 
-@app.route("/api/ocr", methods=["POST"])
-def api_ocr():
-    data = request.get_json() or {}
-    date = data.get("date")
-    filename = data.get("filename")
+# [OCR-DISABLED] @app.route("/api/ocr", methods=["POST"])
+# [OCR-DISABLED] def api_ocr():
+# [OCR-DISABLED]     data = request.get_json() or {}
+# [OCR-DISABLED]     date = data.get("date")
+# [OCR-DISABLED]     filename = data.get("filename")
 
-    if not date or not filename:
-        return jsonify({"success": False, "error": "Missing params"}), 400
+# [OCR-DISABLED]     if not date or not filename:
+# [OCR-DISABLED]         return jsonify({"success": False, "error": "Missing params"}), 400
 
-    path = safe_path(date, filename)
+# [OCR-DISABLED]     path = safe_path(date, filename)
 
-    if reader is None:
-        return jsonify({
-            "success": False,
-            "error": "easyocr engine unavailable (torch not loaded). "
-                     "Use the paddle engine via /api/extract instead.",
-        }), 503
+# [OCR-DISABLED]     if reader is None:
+# [OCR-DISABLED]         return jsonify({
+# [OCR-DISABLED]             "success": False,
+# [OCR-DISABLED]             "error": "easyocr engine unavailable (torch not loaded). "
+# [OCR-DISABLED]                      "Use the paddle engine via /api/extract instead.",
+# [OCR-DISABLED]         }), 503
 
-    try:
-        # Load image with PIL and convert to RGB numpy array for clean channel handling
-        with Image.open(path) as img:
-            img_rgb = img.convert("RGB")
-            img_np = np.array(img_rgb)
+# [OCR-DISABLED]     try:
+# [OCR-DISABLED]         # Load image with PIL and convert to RGB numpy array for clean channel handling
+# [OCR-DISABLED]         with Image.open(path) as img:
+# [OCR-DISABLED]             img_rgb = img.convert("RGB")
+# [OCR-DISABLED]             img_np = np.array(img_rgb)
 
-        # detail=0 returns a clean list of strings directly: ['Line 1', 'Line 2', ...]
-        # paragraph=True groups nearby lines together into natural paragraphs
-        results = reader.readtext(img_np, detail=0, paragraph=False)
+# [OCR-DISABLED]         # detail=0 returns a clean list of strings directly: ['Line 1', 'Line 2', ...]
+# [OCR-DISABLED]         # paragraph=True groups nearby lines together into natural paragraphs
+# [OCR-DISABLED]         results = reader.readtext(img_np, detail=0, paragraph=False)
 
-        extracted_text = "\n".join(results).strip()
+# [OCR-DISABLED]         extracted_text = "\n".join(results).strip()
 
-        return jsonify({
-            "success": True,
-            "text": extracted_text if extracted_text else "No text detected in image."
-        })
+# [OCR-DISABLED]         return jsonify({
+# [OCR-DISABLED]             "success": True,
+# [OCR-DISABLED]             "text": extracted_text if extracted_text else "No text detected in image."
+# [OCR-DISABLED]         })
 
-    except Exception as e:
-        return jsonify({"success": False, "error": f"OCR Error: {str(e)}"}), 500
+# [OCR-DISABLED]     except Exception as e:
+# [OCR-DISABLED]         return jsonify({"success": False, "error": f"OCR Error: {str(e)}"}), 500
 
 @app.route("/api/health")
 def api_health():
@@ -1563,7 +1565,8 @@ def api_record_thumb(record_id: str):
         pass
     return send_file(p, mimetype="image/png")
 
-# ── Solve: image -> OCR -> OpenAI -> answer (Feature A), cache-aware ────────────
+# ── Capture helpers (inline capture + direct vision) ──────────────────────────
+# [OCR-DISABLED] old header: Solve: image -> OCR -> OpenAI -> answer (Feature A)
 
 def _resolve_image_for_record(rec: dict) -> Path | None:
     """Return an absolute, existing path to a record's backing image, or None."""
@@ -1654,49 +1657,89 @@ def _save_vision_batch(png_blobs):
             refs.append(str(path))
         paths.append(path)
     return refs, paths
-@app.route("/api/ocr-only", methods=["POST"])
-def api_ocr_only():
+# [OCR-DISABLED] @app.route("/api/ocr-only", methods=["POST"])
+# [OCR-DISABLED] def api_ocr_only():
+# [OCR-DISABLED]     """
+# [OCR-DISABLED]     Image -> OCR text ONLY (no OpenAI). Creates a 'captured' record so the user
+# [OCR-DISABLED]     can review/edit the extracted text, then call /api/ask to get an answer.
+
+# [OCR-DISABLED]     Request JSON:
+# [OCR-DISABLED]       { "image": "data:image/png;base64,....",
+# [OCR-DISABLED]         "source_type": "screenshot-region"|"screenshot-full",
+# [OCR-DISABLED]         "engine": "paddle|easyocr" }
+
+# [OCR-DISABLED]     Returns: { success, record_id, extracted_text }
+# [OCR-DISABLED]     Cancellation: not supported server-side. The capture/record is saved before
+# [OCR-DISABLED]     OCR runs; a client "Stop" only stops waiting, OCR finishes in the background
+# [OCR-DISABLED]     and the saved record stays.
+# [OCR-DISABLED]     """
+# [OCR-DISABLED]     if ocr_engine is None or db_layer is None:
+# [OCR-DISABLED]         return jsonify({"success": False, "error": "OCR/data layer unavailable."}), 503
+
+# [OCR-DISABLED]     data = request.get_json(silent=True) or {}
+# [OCR-DISABLED]     image_data = data.get("image")
+# [OCR-DISABLED]     engine = data.get("engine")
+# [OCR-DISABLED]     source_type = data.get("source_type", "screenshot-region")
+# [OCR-DISABLED]     if not image_data:
+# [OCR-DISABLED]         return jsonify({"success": False, "error": "Missing 'image'."}), 400
+
+# [OCR-DISABLED]     rec, maybe_err = _save_inline_capture(image_data, source_type)
+# [OCR-DISABLED]     if rec is None:
+# [OCR-DISABLED]         return jsonify({"success": False, "error": maybe_err}), 400
+# [OCR-DISABLED]     img_path = maybe_err  # on success, second value is the path
+
+# [OCR-DISABLED]     try:
+# [OCR-DISABLED]         extracted = ocr_engine.extract_text(str(img_path), engine=engine)
+# [OCR-DISABLED]     except ocr_engine.OCRError as e:
+# [OCR-DISABLED]         db_layer.update_record(rec["id"], status="error")
+# [OCR-DISABLED]         return jsonify({"success": False, "error": str(e), "record_id": rec["id"]}), 502
+
+# [OCR-DISABLED]     db_layer.update_record(rec["id"], extracted_text=extracted or "")
+# [OCR-DISABLED]     return jsonify({
+# [OCR-DISABLED]         "success": True,
+# [OCR-DISABLED]         "record_id": rec["id"],
+# [OCR-DISABLED]         "extracted_text": extracted or "",
+# [OCR-DISABLED]     })
+
+@app.route("/api/register-capture", methods=["POST"])
+def api_register_capture():
     """
-    Image -> OCR text ONLY (no OpenAI). Creates a 'captured' record so the user
-    can review/edit the extracted text, then call /api/ask to get an answer.
+    Save a captured image and create a 'captured' record (no OCR, no OpenAI).
+    Used by the daemon so its screenshots show up in the Gallery.
+    # [OCR-DISABLED] replaces /api/ocr-only, which also ran local OCR.
 
-    Request JSON:
-      { "image": "data:image/png;base64,....",
-        "source_type": "screenshot-region"|"screenshot-full",
-        "engine": "paddle|easyocr" }
-
-    Returns: { success, record_id, extracted_text }
-    Cancellation: not supported server-side. The capture/record is saved before
-    OCR runs; a client "Stop" only stops waiting, OCR finishes in the background
-    and the saved record stays.
+    Request JSON: { "image": "data:image/png;base64,...",
+                    "source_type": "screenshot-full" }   # optional
+    Returns: { success, record_id } or { success:false, error } (400/413/503/500).
     """
-    if ocr_engine is None or db_layer is None:
-        return jsonify({"success": False, "error": "OCR/data layer unavailable."}), 503
-
-    data = request.get_json(silent=True) or {}
+    if db_layer is None:
+        return jsonify({"success": False, "error": "Data layer unavailable."}), 503
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"success": False, "error": "Invalid JSON body."}), 400
     image_data = data.get("image")
-    engine = data.get("engine")
-    source_type = data.get("source_type", "screenshot-region")
-    if not image_data:
+    if not isinstance(image_data, str) or not image_data:
         return jsonify({"success": False, "error": "Missing 'image'."}), 400
-
-    rec, maybe_err = _save_inline_capture(image_data, source_type)
-    if rec is None:
-        return jsonify({"success": False, "error": maybe_err}), 400
-    img_path = maybe_err  # on success, second value is the path
-
+    source_type = data.get("source_type")
+    if not isinstance(source_type, str) or not source_type.strip():
+        source_type = "screenshot-full"
+    source_type = source_type.strip()[:40]
     try:
-        extracted = ocr_engine.extract_text(str(img_path), engine=engine)
-    except ocr_engine.OCRError as e:
-        db_layer.update_record(rec["id"], status="error")
-        return jsonify({"success": False, "error": str(e), "record_id": rec["id"]}), 502
-
-    db_layer.update_record(rec["id"], extracted_text=extracted or "")
-    return jsonify({
-        "success": True,
-        "record_id": rec["id"],
-        "extracted_text": extracted or "",
-    })
+        raw = _decode_data_url_image(image_data, 1)
+        try:
+            with Image.open(io.BytesIO(raw)) as probe:
+                probe.verify()
+        except Exception:  # noqa: BLE001
+            raise _VisionInputError("Image 1 could not be decoded.", 400)
+        rec, maybe_err = _save_inline_capture(image_data, source_type)
+        if rec is None:
+            return jsonify({"success": False, "error": "Could not save capture."}), 400
+        return jsonify({"success": True, "record_id": rec["id"]})
+    except _VisionInputError as e:
+        return jsonify({"success": False, "error": str(e)}), e.status
+    except Exception:  # noqa: BLE001
+        logging.getLogger(__name__).exception("register-capture failed")
+        return jsonify({"success": False, "error": "Could not register capture."}), 500
 
 @app.route("/api/vision-ask", methods=["POST"])
 def api_vision_ask():
@@ -1783,107 +1826,107 @@ def api_vision_ask():
                         "error": f"Answer generated but could not be saved: {e}"}), 500
     return jsonify({"success": True, "answer": answer,
                     "record_id": rec["id"], "image_count": n})
-@app.route("/api/solve", methods=["POST"])
-def api_solve():
-    """
-    Image -> OCR -> OpenAI -> answer, stored on a record (cache-aware).
+# [OCR-DISABLED] @app.route("/api/solve", methods=["POST"])
+# [OCR-DISABLED] def api_solve():
+# [OCR-DISABLED]     """
+# [OCR-DISABLED]     Image -> OCR -> OpenAI -> answer, stored on a record (cache-aware).
 
-    Request JSON (one of):
-      { "record_id": "<id>", "force": false, "engine": "paddle|easyocr" }
-      { "image": "data:image/png;base64,....",
-        "source_type": "screenshot-region",  # or screenshot-full
-        "date": "YYYY-MM-DD", "filename": "foo.png",   # optional: persist image
-        "engine": "paddle|easyocr" }
+# [OCR-DISABLED]     Request JSON (one of):
+# [OCR-DISABLED]       { "record_id": "<id>", "force": false, "engine": "paddle|easyocr" }
+# [OCR-DISABLED]       { "image": "data:image/png;base64,....",
+# [OCR-DISABLED]         "source_type": "screenshot-region",  # or screenshot-full
+# [OCR-DISABLED]         "date": "YYYY-MM-DD", "filename": "foo.png",   # optional: persist image
+# [OCR-DISABLED]         "engine": "paddle|easyocr" }
 
-    Behavior:
-      - If record_id has an answer and force is not set -> cache hit, returned
-        immediately (NO OCR, NO OpenAI).
-      - Otherwise: OCR the image, call OpenAI, store answer on the record,
-        return it.
-    """
-    if ai_helper is None:
-        return jsonify({"success": False, "error": "AI helper unavailable."}), 503
-    if ocr_engine is None or db_layer is None:
-        return jsonify({"success": False, "error": "OCR/data layer unavailable."}), 503
+# [OCR-DISABLED]     Behavior:
+# [OCR-DISABLED]       - If record_id has an answer and force is not set -> cache hit, returned
+# [OCR-DISABLED]         immediately (NO OCR, NO OpenAI).
+# [OCR-DISABLED]       - Otherwise: OCR the image, call OpenAI, store answer on the record,
+# [OCR-DISABLED]         return it.
+# [OCR-DISABLED]     """
+# [OCR-DISABLED]     if ai_helper is None:
+# [OCR-DISABLED]         return jsonify({"success": False, "error": "AI helper unavailable."}), 503
+# [OCR-DISABLED]     if ocr_engine is None or db_layer is None:
+# [OCR-DISABLED]         return jsonify({"success": False, "error": "OCR/data layer unavailable."}), 503
 
-    data = request.get_json(silent=True) or {}
-    engine = data.get("engine")
-    force = bool(data.get("force"))
-    tone = data.get("tone")
+# [OCR-DISABLED]     data = request.get_json(silent=True) or {}
+# [OCR-DISABLED]     engine = data.get("engine")
+# [OCR-DISABLED]     force = bool(data.get("force"))
+# [OCR-DISABLED]     tone = data.get("tone")
 
-    # ── Resolve the target record + image ──────────────────────────────────
-    record_id = data.get("record_id")
-    image_data = data.get("image")
+# [OCR-DISABLED]     # ── Resolve the target record + image ──────────────────────────────────
+# [OCR-DISABLED]     record_id = data.get("record_id")
+# [OCR-DISABLED]     image_data = data.get("image")
 
-    if record_id:
-        rec = db_layer.get_record(record_id)
-        if not rec:
-            return jsonify({"success": False, "error": "Record not found."}), 404
+# [OCR-DISABLED]     if record_id:
+# [OCR-DISABLED]         rec = db_layer.get_record(record_id)
+# [OCR-DISABLED]         if not rec:
+# [OCR-DISABLED]             return jsonify({"success": False, "error": "Record not found."}), 404
 
-        # Cache hit: already answered and not forced -> no reprocessing.
-        if not force and db_layer.has_answer(record_id):
-            return jsonify({
-                "success": True, "cached": True,
-                "answer": rec["answer"], "record": rec,
-            })
+# [OCR-DISABLED]         # Cache hit: already answered and not forced -> no reprocessing.
+# [OCR-DISABLED]         if not force and db_layer.has_answer(record_id):
+# [OCR-DISABLED]             return jsonify({
+# [OCR-DISABLED]                 "success": True, "cached": True,
+# [OCR-DISABLED]                 "answer": rec["answer"], "record": rec,
+# [OCR-DISABLED]             })
 
-        img_path = _resolve_image_for_record(rec)
-        if img_path is None:
-            return jsonify({"success": False, "error": "Record image missing."}), 404
+# [OCR-DISABLED]         img_path = _resolve_image_for_record(rec)
+# [OCR-DISABLED]         if img_path is None:
+# [OCR-DISABLED]             return jsonify({"success": False, "error": "Record image missing."}), 404
 
-    elif image_data:
-        # New capture sent inline. Optionally persist to the screenshots tree.
-        source_type = data.get("source_type", "screenshot-region")
-        try:
-            _, encoded = image_data.split(",", 1) if "," in image_data else ("", image_data)
-            raw = base64.b64decode(encoded)
-        except Exception as e:  # noqa: BLE001
-            return jsonify({"success": False, "error": f"Bad image data: {e}"}), 400
+# [OCR-DISABLED]     elif image_data:
+# [OCR-DISABLED]         # New capture sent inline. Optionally persist to the screenshots tree.
+# [OCR-DISABLED]         source_type = data.get("source_type", "screenshot-region")
+# [OCR-DISABLED]         try:
+# [OCR-DISABLED]             _, encoded = image_data.split(",", 1) if "," in image_data else ("", image_data)
+# [OCR-DISABLED]             raw = base64.b64decode(encoded)
+# [OCR-DISABLED]         except Exception as e:  # noqa: BLE001
+# [OCR-DISABLED]             return jsonify({"success": False, "error": f"Bad image data: {e}"}), 400
 
-        date = data.get("date") or datetime.now().strftime("%Y-%m-%d")
-        filename = data.get("filename") or f"capture-{datetime.now().strftime('%Y-%m-%dT%H-%M-%S-%f')}.png"
-        day_dir = (SHOTS_DIR / date)
-        day_dir.mkdir(parents=True, exist_ok=True)
-        img_path = (day_dir / filename).resolve()
-        try:
-            with open(img_path, "wb") as f:
-                f.write(raw)
-        except Exception as e:  # noqa: BLE001
-            return jsonify({"success": False, "error": f"Could not save image: {e}"}), 500
+# [OCR-DISABLED]         date = data.get("date") or datetime.now().strftime("%Y-%m-%d")
+# [OCR-DISABLED]         filename = data.get("filename") or f"capture-{datetime.now().strftime('%Y-%m-%dT%H-%M-%S-%f')}.png"
+# [OCR-DISABLED]         day_dir = (SHOTS_DIR / date)
+# [OCR-DISABLED]         day_dir.mkdir(parents=True, exist_ok=True)
+# [OCR-DISABLED]         img_path = (day_dir / filename).resolve()
+# [OCR-DISABLED]         try:
+# [OCR-DISABLED]             with open(img_path, "wb") as f:
+# [OCR-DISABLED]                 f.write(raw)
+# [OCR-DISABLED]         except Exception as e:  # noqa: BLE001
+# [OCR-DISABLED]             return jsonify({"success": False, "error": f"Could not save image: {e}"}), 500
 
-        rel_ref = str(img_path.relative_to(ROOT)) if str(img_path).startswith(str(ROOT)) else str(img_path)
-        rec = db_layer.create_record(source_type=source_type, input_ref=rel_ref, status="processing")
-    else:
-        return jsonify({"success": False, "error": "Provide 'record_id' or 'image'."}), 400
+# [OCR-DISABLED]         rel_ref = str(img_path.relative_to(ROOT)) if str(img_path).startswith(str(ROOT)) else str(img_path)
+# [OCR-DISABLED]         rec = db_layer.create_record(source_type=source_type, input_ref=rel_ref, status="processing")
+# [OCR-DISABLED]     else:
+# [OCR-DISABLED]         return jsonify({"success": False, "error": "Provide 'record_id' or 'image'."}), 400
 
-    # ── OCR -> OpenAI ──────────────────────────────────────────────────────
-    db_layer.update_record(rec["id"], status="processing")
-    try:
-        extracted = ocr_engine.extract_text(str(img_path), engine=engine)
-    except ocr_engine.OCRError as e:
-        db_layer.update_record(rec["id"], status="error")
-        return jsonify({"success": False, "error": str(e), "record_id": rec["id"]}), 502
+# [OCR-DISABLED]     # ── OCR -> OpenAI ──────────────────────────────────────────────────────
+# [OCR-DISABLED]     db_layer.update_record(rec["id"], status="processing")
+# [OCR-DISABLED]     try:
+# [OCR-DISABLED]         extracted = ocr_engine.extract_text(str(img_path), engine=engine)
+# [OCR-DISABLED]     except ocr_engine.OCRError as e:
+# [OCR-DISABLED]         db_layer.update_record(rec["id"], status="error")
+# [OCR-DISABLED]         return jsonify({"success": False, "error": str(e), "record_id": rec["id"]}), 502
 
-    if not extracted:
-        db_layer.update_record(rec["id"], status="error", extracted_text="")
-        return jsonify({"success": False, "error": "No text detected in image.", "record_id": rec["id"]}), 422
+# [OCR-DISABLED]     if not extracted:
+# [OCR-DISABLED]         db_layer.update_record(rec["id"], status="error", extracted_text="")
+# [OCR-DISABLED]         return jsonify({"success": False, "error": "No text detected in image.", "record_id": rec["id"]}), 422
 
-    db_layer.update_record(rec["id"], extracted_text=extracted)
+# [OCR-DISABLED]     db_layer.update_record(rec["id"], extracted_text=extracted)
 
-    try:
-        answer = ai_helper.ask(extracted, tone=tone)
-    except ai_helper.AIError as e:
-        db_layer.update_record(rec["id"], status="error")
-        return jsonify({"success": False, "error": str(e), "record_id": rec["id"]}), 502
-    except Exception as e:  # noqa: BLE001
-        db_layer.update_record(rec["id"], status="error")
-        return jsonify({"success": False, "error": f"Unexpected error: {e}", "record_id": rec["id"]}), 500
+# [OCR-DISABLED]     try:
+# [OCR-DISABLED]         answer = ai_helper.ask(extracted, tone=tone)
+# [OCR-DISABLED]     except ai_helper.AIError as e:
+# [OCR-DISABLED]         db_layer.update_record(rec["id"], status="error")
+# [OCR-DISABLED]         return jsonify({"success": False, "error": str(e), "record_id": rec["id"]}), 502
+# [OCR-DISABLED]     except Exception as e:  # noqa: BLE001
+# [OCR-DISABLED]         db_layer.update_record(rec["id"], status="error")
+# [OCR-DISABLED]         return jsonify({"success": False, "error": f"Unexpected error: {e}", "record_id": rec["id"]}), 500
 
-    updated = db_layer.update_record(rec["id"], answer=answer, status="answered")
-    return jsonify({
-        "success": True, "cached": False,
-        "answer": answer, "extracted_text": extracted, "record": updated,
-    })
+# [OCR-DISABLED]     updated = db_layer.update_record(rec["id"], answer=answer, status="answered")
+# [OCR-DISABLED]     return jsonify({
+# [OCR-DISABLED]         "success": True, "cached": False,
+# [OCR-DISABLED]         "answer": answer, "extracted_text": extracted, "record": updated,
+# [OCR-DISABLED]     })
 
 # ── Live transcription (WebSocket) — Phase 5 ──────────────────────────────────
 
@@ -2409,7 +2452,8 @@ def main():
     local_ip = get_local_ip()
 
     print()
-    print("  Screenshot viewer with Crop, Incremental Versioning & OCR")
+    # [OCR-DISABLED] was: print("  Screenshot viewer with Crop, Incremental Versioning & OCR")
+    print("  Screenshot viewer with Crop, Incremental Versioning")
     print(f"  Local (this machine):  http://localhost:{args.port}")
     print(f"  Network (iPhone/etc):  http://{local_ip}:{args.port}")
     print()
