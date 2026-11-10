@@ -191,8 +191,7 @@ def test_large_image_downscaled(client, stub, monkeypatch):
         assert max(im.size) <= 2000
 
 
-def test_tone_and_language_passthrough(client, stub):
-    post(client, images=[make_data_url()], mode="coding", tone="detailed", language="hi")
+def test_language_passthrough(client, stub):
+    post(client, images=[make_data_url()], mode="coding", language="hi")
     system = stub[0]["messages"][0]["content"]
-    assert ai.TONE_SUFFIXES["detailed"] in system
     assert ai.language_instruction("hi") in system

@@ -18,7 +18,7 @@ class StubAIConfigured:
     def is_configured(self):
         return True
 
-    def ask(self, text, system_prompt=None, model=None, tone=None):
+    def ask(self, text, system_prompt=None, model=None):
         return "DISTILLED PROFILE"
 
 
@@ -26,7 +26,7 @@ class StubAIOff:
     def is_configured(self):
         return False
 
-    def ask(self, text, system_prompt=None, model=None, tone=None):
+    def ask(self, text, system_prompt=None, model=None):
         raise AssertionError("ask() must not be called when AI is unconfigured")
 
 
@@ -34,7 +34,7 @@ class StubAIRaises:
     def is_configured(self):
         return True
 
-    def ask(self, text, system_prompt=None, model=None, tone=None):
+    def ask(self, text, system_prompt=None, model=None):
         raise RuntimeError("upstream failure")
 
 

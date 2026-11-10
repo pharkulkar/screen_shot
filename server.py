@@ -1308,7 +1308,6 @@ def api_ask():
     text = (data.get("text") or "").strip()
     want_stream = bool(data.get("stream"))
     system_prompt = data.get("system_prompt")
-    tone = data.get("tone")
     record_id = data.get("record_id")  # optional: persist answer onto a record
     language = data.get("language")    # optional: pin the answer language
     # optional: lets /api/cancel discard the result before persisting. Honored on
@@ -1332,7 +1331,7 @@ def api_ask():
         def generate():
             collected = []
             try:
-                for piece in ai_helper.ask_stream(text, system_prompt=system_prompt, tone=tone):
+                for piece in ai_helper.ask_stream(text, system_prompt=system_prompt):
                     collected.append(piece)
                     yield f"event: delta\ndata: {json.dumps({'text': piece})}\n\n"
                 full = "".join(collected).strip()
@@ -1350,7 +1349,7 @@ def api_ask():
 
     # ── Non-streaming (JSON) ───────────────────────────────────────────────
     try:
-        answer = ai_helper.ask(text, system_prompt=system_prompt, tone=tone)
+        answer = ai_helper.ask(text, system_prompt=system_prompt)
     except ai_helper.AIError as e:
         # Config problems (missing key) vs. upstream API problems both map to
         # a clean 502-ish failure; 400 would wrongly imply a bad client request.
@@ -1759,7 +1758,7 @@ def api_vision_ask():
     Request JSON:
       { "images": ["data:image/png;base64,...", ...],
         "mode": "coding"|"scenario",
-        "tone": "...", "language": "...",            # optional
+        "language": "...",                           # optional
         "source_types": ["screenshot-full"|"screenshot-region", ...] }  # optional
     Returns: { success, answer, record_id, image_count } or { success:false, error }
     Status: 400 invalid, 413 too large/many, 502 OpenAI failure, 503 unavailable.
@@ -1780,7 +1779,6 @@ def api_vision_ask():
     if mode not in ai_helper.VISION_MODES:
         return jsonify({"success": False,
                         "error": "Invalid 'mode'. Use 'coding' or 'scenario'."}), 400
-    tone = data.get("tone") if isinstance(data.get("tone"), str) else None
     lang = None
     language = data.get("language")
     if isinstance(language, str) and language:
@@ -1802,7 +1800,7 @@ def api_vision_ask():
         return jsonify({"success": False, "error": str(e)}), e.status
     urls = ["data:image/png;base64," + base64.b64encode(b).decode("ascii") for b in png_blobs]
     try:
-        answer = ai_helper.ask_with_images(urls, mode, tone=tone, language=lang)
+        answer = ai_helper.ask_with_images(urls, mode, language=lang)
     except ai_helper.AIError as e:
         if _consume_cancelled(request_id):
             return _cancelled_response()
@@ -1955,7 +1953,7 @@ def api_transcript_clear():
     convo.clear()
     return jsonify({"success": True})
 
-def _generate_suggestions(tone=None, dialogue=None):
+def _generate_suggestions(dialogue=None):
     """Shared helper: build suggestions from provided dialogue or the buffer.
     Returns (suggestions_list, error_str)."""
     if ai_helper is None:
@@ -1969,7 +1967,7 @@ def _generate_suggestions(tone=None, dialogue=None):
     if not (dialogue or "").strip():
         return [], None
     try:
-        return ai_helper.suggest(dialogue, tone=tone), None
+        return ai_helper.suggest(dialogue), None
     except ai_helper.AIError as e:
         return None, str(e)
     except Exception as e:  # noqa: BLE001
@@ -2005,13 +2003,12 @@ def api_suggest():
     Generate 1-3 reply suggestions ("what should I say").
 
     Request JSON (all optional):
-      { "tone": "concise|...", "dialogue": "<override text>" }
+      { "dialogue": "<override text>" }
     Without `dialogue`, uses the current rolling transcript buffer.
     """
     data = request.get_json(silent=True) or {}
-    tone = data.get("tone")
     dialogue = data.get("dialogue")  # None -> use buffer
-    suggestions, err = _generate_suggestions(tone=tone, dialogue=dialogue)
+    suggestions, err = _generate_suggestions(dialogue=dialogue)
     if err:
         return jsonify({"success": False, "error": err}), 502
     return jsonify({"success": True, "suggestions": suggestions})
@@ -2031,8 +2028,8 @@ if sock is not None:
             { "speaker": "me"|"them", "audio": "data:...;base64,..",
               "filename": "me.webm",
               "languages": [...], "roman": true,   # both optional (Interview tab)
-              "auto_suggest": true, "tone": "concise" }   # auto flags optional
-            { "type": "suggest_now", "tone": "concise" }   # on-demand request
+              "auto_suggest": true }   # auto flags optional
+            { "type": "suggest_now" }   # on-demand request
 
         Server -> client:
             { "type": "transcript", "speaker, text }
@@ -2055,7 +2052,6 @@ if sock is not None:
             "last_them_ts": 0.0,
             "last_suggest_ts": 0.0,
             "auto": False,
-            "tone": None,
             "alive": True,
             "pending": False,  # a Them turn is awaiting a silence window
         }
@@ -2073,7 +2069,7 @@ if sock is not None:
                     continue  # throttled
                 st["pending"] = False
                 st["last_suggest_ts"] = now
-                suggestions, err = _generate_suggestions(tone=st["tone"])
+                suggestions, err = _generate_suggestions()
                 if err:
                     safe_send({"type": "error", "error": err})
                 elif suggestions:
@@ -2095,7 +2091,7 @@ if sock is not None:
                 # On-demand suggestion request.
                 if msg.get("type") == "suggest_now":
                     st["last_suggest_ts"] = time.time()
-                    suggestions, err = _generate_suggestions(tone=msg.get("tone"))
+                    suggestions, err = _generate_suggestions()
                     if err:
                         safe_send({"type": "error", "error": err})
                     else:
@@ -2104,8 +2100,6 @@ if sock is not None:
 
                 # Otherwise it's an audio chunk.
                 st["auto"] = bool(msg.get("auto_suggest"))
-                if msg.get("tone"):
-                    st["tone"] = msg.get("tone")
 
                 speaker = (msg.get("speaker") or "them").lower()
                 audio_field = msg.get("audio") or ""

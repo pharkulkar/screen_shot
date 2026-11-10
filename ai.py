@@ -70,26 +70,24 @@ REQUEST_TIMEOUT = float(os.environ.get("OPENAI_TIMEOUT", "30"))
 # Answer-mode system prompt (Feature A default behavior): given text extracted
 # from a screenshot (or typed), directly answer the on-screen question.
 ANSWER_SYSTEM_PROMPT = (
-    "You are a concise, accurate assistant. You are given text extracted from a "
-    "user's screen (often a question, quiz item, form, or snippet of content). "
-    "Determine what is being asked and give the best direct answer.\n"
-    "- If it is a multiple-choice question, state the correct option and a one-"
-    "line reason.\n"
-    "- If it is an open question, answer directly and briefly.\n"
+    "You are an accurate assistant. You are given text extracted from a "
+    "user's screen or a typed question (often a question, quiz item, form, or "
+    "snippet of content). Determine what is being asked and give the best "
+    "direct answer.\n"
+    "- Match the length and depth of the answer to the kind of question asked.\n"
+    "- Simple factual, definition or multiple-choice questions: answer in one "
+    "or two lines (for multiple choice, the correct option and a one-line "
+    "reason).\n"
+    "- Conceptual or 'explain' questions: a short, clear explanation.\n"
+    "- Behavioural, scenario, system-design, coding or 'in detail' questions: "
+    "a fuller, well-structured answer with the key steps, reasoning and "
+    "trade-offs.\n"
     "- If the text is ambiguous or incomplete, answer the most likely intended "
     "question and note the assumption in one short line.\n"
-    "- Keep answers short and glanceable; the user is reading mid-task."
+    "- Never pad: be as long as the question needs and no longer."
 )
 
 
-# Tone presets (Feature B/A UX). Appended to the system prompt to shape style.
-TONE_SUFFIXES = {
-    "concise": " Answer as briefly as possible — ideally one or two lines.",
-    "detailed": " Give a thorough answer with brief reasoning or steps.",
-    "professional": " Use a polished, professional tone suitable for work.",
-    "casual": " Use a relaxed, conversational tone.",
-}
-DEFAULT_TONE = os.environ.get("ANSWER_TONE", "concise")
 
 
 # Coach system prompt (Feature B): given the meeting dialogue, suggest what the
@@ -203,14 +201,11 @@ def is_configured() -> bool:
 def _build_messages(
     text: str,
     system_prompt: str | None = None,
-    tone: str | None = None,
 ) -> list[dict]:
     text = (text or "").strip()
     if not text:
         raise AIError("No text provided to answer.")
     base = system_prompt or ANSWER_SYSTEM_PROMPT
-    tone_key = (tone or DEFAULT_TONE).lower()
-    base += TONE_SUFFIXES.get(tone_key, "")
     return [
         {"role": "system", "content": base},
         {"role": "user", "content": text},
@@ -239,7 +234,6 @@ def ask(
     text: str,
     system_prompt: str | None = None,
     model: str | None = None,
-    tone: str | None = None,
 ) -> str:
     """
     Send `text` to OpenAI and return the complete answer as a string.
@@ -247,7 +241,7 @@ def ask(
     Raises AIError on any failure (missing key, API error, timeout, empty input).
     """
     client = _get_client()
-    messages = _build_messages(text, system_prompt, tone)
+    messages = _build_messages(text, system_prompt)
     try:
         resp = client.chat.completions.create(
             model=model or CHAT_MODEL,
@@ -260,14 +254,13 @@ def ask(
         raise _wrap_openai_errors(exc)
 
 
-def _build_vision_messages(images, mode, tone=None, language=None) -> list:
+def _build_vision_messages(images, mode, language=None) -> list:
     """System + user messages for a direct image question. Pure (no network)."""
     if mode not in VISION_MODES:
         raise AIError("Invalid vision mode. Use 'coding' or 'scenario'.")
     if not images:
         raise AIError("No images provided.")
-    system = VISION_SYSTEM_PROMPTS[mode] + TONE_SUFFIXES.get(
-        (tone or DEFAULT_TONE).lower(), "")
+    system = VISION_SYSTEM_PROMPTS[mode]
     if language:
         system += "\n" + language_instruction(language)
     n = len(images)
@@ -277,11 +270,11 @@ def _build_vision_messages(images, mode, tone=None, language=None) -> list:
     content += [{"type": "image_url", "image_url": {"url": u}} for u in images]
     return [{"role": "system", "content": system},
             {"role": "user", "content": content}]
-def ask_with_images(images, mode, tone=None, language=None, model=None) -> str:
+def ask_with_images(images, mode, language=None, model=None) -> str:
     """Send one or more data-URL images to OpenAI and return the answer.
     Raises AIError on any failure."""
     client = _get_client()
-    messages = _build_vision_messages(images, mode, tone, language)
+    messages = _build_vision_messages(images, mode, language)
     try:
         resp = client.chat.completions.create(
             model=model or VISION_MODEL,
@@ -605,7 +598,6 @@ def ask_stream(
     text: str,
     system_prompt: str | None = None,
     model: str | None = None,
-    tone: str | None = None,
 ):
     """
     Stream the answer from OpenAI, yielding text chunks as they arrive.
@@ -613,7 +605,7 @@ def ask_stream(
     Yields str deltas. Raises AIError on failure (before/while streaming).
     """
     client = _get_client()
-    messages = _build_messages(text, system_prompt, tone)
+    messages = _build_messages(text, system_prompt)
     try:
         stream = client.chat.completions.create(
             model=model or CHAT_MODEL,
@@ -653,7 +645,7 @@ def _parse_suggestions(text: str) -> list[str]:
     return out[:3]
 
 
-def suggest(dialogue: str, tone: str | None = None, model: str | None = None) -> list[str]:
+def suggest(dialogue: str, model: str | None = None) -> list[str]:
     """
     Given the recent 'Me'/'Them' dialogue, return 1-3 short reply suggestions.
 
@@ -663,7 +655,7 @@ def suggest(dialogue: str, tone: str | None = None, model: str | None = None) ->
     if not dialogue:
         return []
     client = _get_client()
-    system = COACH_SYSTEM_PROMPT + TONE_SUFFIXES.get((tone or DEFAULT_TONE).lower(), "")
+    system = COACH_SYSTEM_PROMPT
     try:
         resp = client.chat.completions.create(
             model=model or CHAT_MODEL,
